@@ -26,8 +26,8 @@
   <div id="message" class="notice hidden"></div>
   <section class="grid">
     <article class="card"><div class="metric-label">Total account balance</div><div class="metric" id="totalBalance">—</div><div class="metric-note">Across synced accounts</div></article>
-    <article class="card"><div class="metric-label">Money in · this month</div><div class="metric positive" id="moneyIn">—</div><div class="metric-note">Based on imported transactions</div></article>
-    <article class="card"><div class="metric-label">Money out · this month</div><div class="metric negative" id="moneyOut">—</div><div class="metric-note">Based on imported transactions</div></article>
+    <article class="card"><div class="metric-label" id="moneyInLabel">Money in · this month</div><div class="metric positive" id="moneyIn">—</div><div class="metric-note" id="moneyInNote">Settled transactions for the current month</div></article>
+    <article class="card"><div class="metric-label" id="moneyOutLabel">Money out · this month</div><div class="metric negative" id="moneyOut">—</div><div class="metric-note" id="moneyOutNote">Settled transactions for the current month</div></article>
   </section>
   <section class="section"><div class="section-head"><h3>Bank accounts</h3><span class="pill" id="accountCount">0 accounts</span></div><div class="card"><div id="accountsList" class="list"><div class="empty">No accounts synced yet. Use “Sync Kiwibank” after setup.</div></div></div></section>
   <section class="section"><div class="section-head"><h3>Recent transactions</h3><span class="sync-time" id="lastSynced"></span></div><div class="card"><div id="transactionsList" class="list"><div class="empty">Your recent transactions will appear here after your first sync.</div></div></div></section>
@@ -46,19 +46,29 @@ function showMessage(id, text, type='') { const el=$(id); el.textContent=text; e
 function clearMessage(id){$(id).classList.add('hidden')}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function dateLabel(s){if(!s)return '';const d=new Date(s+'T12:00:00');return Number.isNaN(d.getTime())?'':d.toLocaleDateString('en-NZ',{day:'numeric',month:'short'});}
+function monthRange(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Pacific/Auckland',year:'numeric',month:'2-digit'}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));const year=Number(p.year),month=Number(p.month);const nextYear=month===12?year+1:year;const nextMonth=month===12?1:month+1;return {start:year+'-'+String(month).padStart(2,'0')+'-01',end:nextYear+'-'+String(nextMonth).padStart(2,'0')+'-01'};}
 async function setView(user){sessionUser=user; $('authView').classList.toggle('hidden',!!user);$('appView').classList.toggle('hidden',!user);if(!user)return;$('userLabel').textContent=user.email||'Signed in';$('userId').textContent=user.id;await loadData();}
 async function loadData(){
  clearMessage('message');
- const [ar,tr,cr]=await Promise.all([
+ const range=monthRange();
+ const monthStart=()=>range.start;
+ const nextMonthStart=()=>range.end;
+ const [ar,tr,mr,cr]=await Promise.all([
   supabase.from('finance_accounts').select('id,name,institution,account_type,currency_code,current_balance,available_balance,balance_as_at,is_active').eq('user_id',sessionUser.id).eq('is_active',true).order('name'),
   supabase.from('finance_transactions').select('id,account_id,transaction_date,description,merchant_name,amount,currency_code,is_pending').eq('user_id',sessionUser.id).order('transaction_date',{ascending:false}).limit(100),
+  supabase.from('finance_transactions').select('amount,is_pending,transaction_date').eq('user_id',sessionUser.id).gte('transaction_date',monthStart()).lt('transaction_date',nextMonthStart()).eq('is_pending',false),
   supabase.from('finance_connections').select('last_synced_at,connection_status').eq('user_id',sessionUser.id).eq('provider','akahu').maybeSingle()
  ]);
- if(ar.error||tr.error){showMessage('message','Could not load finance data. Check that the database tables are exposed to the Supabase Data API and that you are signed in.','error');return;}
- const accounts=ar.data||[], tx=tr.data||[];const now=new Date(), month=now.toISOString().slice(0,7);
+ if(ar.error||tr.error||mr.error){showMessage('message','Could not load finance data. Check that the database tables are exposed to the Supabase Data API and that you are signed in.','error');return;}
+ const accounts=ar.data||[], tx=tr.data||[], monthTx=mr.data||[];const rangeInfo=monthRange();
  $('totalBalance').textContent=accounts.reduce((s,a)=>s+Number(a.current_balance||0),0).toLocaleString('en-NZ',{style:'currency',currency:'NZD'});
- $('moneyIn').textContent=money(tx.filter(t=>String(t.transaction_date).startsWith(month)&&Number(t.amount)>0&&!t.is_pending).reduce((s,t)=>s+Number(t.amount),0));
- $('moneyOut').textContent=money(Math.abs(tx.filter(t=>String(t.transaction_date).startsWith(month)&&Number(t.amount)<0&&!t.is_pending).reduce((s,t)=>s+Number(t.amount),0)));
+ const monthName=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(rangeInfo.start+'T12:00:00Z'));
+ $('moneyInLabel').textContent='Money in · '+monthName;
+ $('moneyOutLabel').textContent='Money out · '+monthName;
+ $('moneyInNote').textContent=monthTx.filter(t=>Number(t.amount)>0).length+' settled incoming transactions · month to date';
+ $('moneyOutNote').textContent=monthTx.filter(t=>Number(t.amount)<0).length+' settled outgoing transactions · month to date';
+ $('moneyIn').textContent=money(monthTx.filter(t=>Number(t.amount)>0).reduce((s,t)=>s+Number(t.amount),0));
+ $('moneyOut').textContent=money(Math.abs(monthTx.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Number(t.amount),0)));
  $('accountCount').textContent=accounts.length+' account'+(accounts.length===1?'':'s');
  $('accountsList').innerHTML=accounts.length?accounts.map(a=>'<div class="item"><div><div class="item-name">'+escapeHtml(a.name)+'</div><div class="sub">'+escapeHtml(a.institution||'Bank')+' · '+escapeHtml(a.account_type||'Account')+'</div></div><div class="amount">'+money(a.current_balance)+'</div></div>').join():'<div class="empty">No accounts synced yet. Sync will import connected accounts.</div>';
  $('transactionsList').innerHTML=tx.length?tx.slice(0,30).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+(t.is_pending?' · Pending':'')+'</div></div><div class="amount '+(Number(t.amount)>=0?'positive':'negative')+'">'+(Number(t.amount)>0?'+':'−')+money(Math.abs(Number(t.amount)))+'</div></div>').join():'<div class="empty">No transactions yet. Your imported transactions will show here.</div>';
