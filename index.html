@@ -50,23 +50,27 @@ function monthRange(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Pac
 async function setView(user){sessionUser=user; $('authView').classList.toggle('hidden',!!user);$('appView').classList.toggle('hidden',!user);if(!user)return;$('userLabel').textContent=user.email||'Signed in';$('userId').textContent=user.id;await loadData();}
 async function loadData(){
  clearMessage('message');
- const range=monthRange();
- const monthStart=()=>range.start;
- const nextMonthStart=()=>range.end;
- const [ar,tr,mr,cr]=await Promise.all([
+ const [ar,tr,latestResult,cr]=await Promise.all([
   supabase.from('finance_accounts').select('id,name,institution,account_type,currency_code,current_balance,available_balance,balance_as_at,is_active').eq('user_id',sessionUser.id).eq('is_active',true).order('name'),
   supabase.from('finance_transactions').select('id,account_id,transaction_date,description,merchant_name,amount,currency_code,is_pending').eq('user_id',sessionUser.id).order('transaction_date',{ascending:false}).limit(100),
-  supabase.from('finance_transactions').select('amount,is_pending,transaction_date').eq('user_id',sessionUser.id).gte('transaction_date',monthStart()).lt('transaction_date',nextMonthStart()).eq('is_pending',false),
+  supabase.from('finance_transactions').select('transaction_date').eq('user_id',sessionUser.id).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1).maybeSingle(),
   supabase.from('finance_connections').select('last_synced_at,connection_status').eq('user_id',sessionUser.id).eq('provider','akahu').maybeSingle()
  ]);
- if(ar.error||tr.error||mr.error){showMessage('message','Could not load finance data. Check that the database tables are exposed to the Supabase Data API and that you are signed in.','error');return;}
- const accounts=ar.data||[], tx=tr.data||[], monthTx=mr.data||[];const rangeInfo=monthRange();
+ if(ar.error||tr.error||latestResult.error){showMessage('message','Could not load finance data. Check that the database tables are exposed to the Supabase Data API and that you are signed in.','error');return;}
+ const latestDate=latestResult.data?.transaction_date;
+ const monthStart=latestDate?latestDate.slice(0,7)+'-01':monthRange().start;
+ const [year,month]=monthStart.split('-').map(Number);
+ const nextMonthStart=year+'-'+String(month===12?1:month+1).padStart(2,'0')+'-'+(month===12? '01':'01');
+ const monthEnd=month===12?(year+1)+'-01-01':year+'-'+String(month+1).padStart(2,'0')+'-01';
+ const mr=await supabase.from('finance_transactions').select('amount,is_pending,transaction_date').eq('user_id',sessionUser.id).gte('transaction_date',monthStart).lt('transaction_date',monthEnd).eq('is_pending',false);
+ if(mr.error){showMessage('message','Could not load monthly transaction totals. '+mr.error.message,'error');return;}
+ const accounts=ar.data||[], tx=tr.data||[], monthTx=mr.data||[];
  $('totalBalance').textContent=accounts.reduce((s,a)=>s+Number(a.current_balance||0),0).toLocaleString('en-NZ',{style:'currency',currency:'NZD'});
- const monthName=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(rangeInfo.start+'T12:00:00Z'));
+ const monthName=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(monthStart+'T12:00:00Z'));
  $('moneyInLabel').textContent='Money in · '+monthName;
  $('moneyOutLabel').textContent='Money out · '+monthName;
- $('moneyInNote').textContent=monthTx.filter(t=>Number(t.amount)>0).length+' settled incoming transactions · month to date';
- $('moneyOutNote').textContent=monthTx.filter(t=>Number(t.amount)<0).length+' settled outgoing transactions · month to date';
+ $('moneyInNote').textContent=monthTx.filter(t=>Number(t.amount)>0).length+' settled incoming transactions · latest active month';
+ $('moneyOutNote').textContent=monthTx.filter(t=>Number(t.amount)<0).length+' settled outgoing transactions · latest active month';
  $('moneyIn').textContent=money(monthTx.filter(t=>Number(t.amount)>0).reduce((s,t)=>s+Number(t.amount),0));
  $('moneyOut').textContent=money(Math.abs(monthTx.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Number(t.amount),0)));
  $('accountCount').textContent=accounts.length+' account'+(accounts.length===1?'':'s');
