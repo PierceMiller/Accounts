@@ -183,13 +183,13 @@ async function loadData(){
  const mr=await supabase.from('finance_transactions').select('amount,is_pending,transaction_date,description,merchant_name,transaction_type').eq('user_id',sessionUser.id).gte('transaction_date',monthStart).lt('transaction_date',monthEnd).eq('is_pending',false);
  if(mr.error){showMessage('message','Could not load monthly transaction totals. '+mr.error.message,'error');return;}
  const accounts=ar.data||[], tx=tr.data||[], monthTx=mr.data||[];
- const countedMonthTx=monthTx.filter(t=>String(t.transaction_type||'').toUpperCase()!=='TRANSFER'&&!/\\bTRANSFER\\b|\\bTRF\\b|P W MILLER/i.test(String(t.merchant_name||'')+' '+String(t.description||'')));
+ const countedMonthTx=monthTx.filter(t=>String(t.transaction_type||'').toUpperCase()!=='TRANSFER'&&!/\bTRANSFER\b|\bTRF\b|P W MILLER/i.test(String(t.merchant_name||'')+' '+String(t.description||'')));
  $('totalBalance').textContent=accounts.reduce((s,a)=>s+Number(a.current_balance||0),0).toLocaleString('en-NZ',{style:'currency',currency:'NZD'});
  const monthName=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(monthStart+'T12:00:00Z'));
  $('moneyInLabel').textContent='Money in · '+monthName;
  $('moneyOutLabel').textContent='Money out · '+monthName;
- $('moneyInNote').textContent=countedMonthTx.filter(t=>Number(t.amount)>0).length+' settled incoming transactions · excluding P W MILLER';
- $('moneyOutNote').textContent=countedMonthTx.filter(t=>Number(t.amount)<0).length+' settled outgoing transactions · excluding P W MILLER';
+ $('moneyInNote').textContent=countedMonthTx.filter(t=>Number(t.amount)>0).length+' settled incoming transactions · excluding transfers';
+ $('moneyOutNote').textContent=countedMonthTx.filter(t=>Number(t.amount)<0).length+' settled outgoing transactions · excluding transfers';
  $('moneyIn').textContent=money(countedMonthTx.filter(t=>Number(t.amount)>0).reduce((s,t)=>s+Number(t.amount),0));
  $('moneyOut').textContent=money(Math.abs(countedMonthTx.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Number(t.amount),0)));
  $('accountCount').textContent=accounts.length+' account'+(accounts.length===1?'':'s');
