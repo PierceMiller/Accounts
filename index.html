@@ -41,7 +41,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_db2WRsSfwQPsBjYJyA2GIw_A51Gs8J5';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 let sessionUser = null;
-let showAllTransactions = false;
+let visibleTransactionCount = 4;
 const money = n => new Intl.NumberFormat('en-NZ',{style:'currency',currency:'NZD'}).format(Number(n)||0);
 function showMessage(id, text, type='') { const el=$(id); el.textContent=text; el.className='notice'+(type?' '+type:''); el.classList.remove('hidden'); }
 function clearMessage(id){$(id).classList.add('hidden')}
@@ -77,14 +77,14 @@ async function loadData(){
  $('moneyOut').textContent=money(Math.abs(countedMonthTx.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Number(t.amount),0)));
  $('accountCount').textContent=accounts.length+' account'+(accounts.length===1?'':'s');
  $('accountsList').innerHTML=accounts.length?accounts.map(a=>'<div class="item"><div><div class="item-name">'+escapeHtml(a.name)+'</div><div class="sub">'+escapeHtml(a.institution||'Bank')+' · '+escapeHtml(a.account_type||'Account')+'</div></div><div class="amount">'+money(a.current_balance)+'</div></div>').join():'<div class="empty">No accounts synced yet. Sync will import connected accounts.</div>';
- $('transactionsList').innerHTML=tx.length?tx.slice(0,showAllTransactions?tx.length:4).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+(t.is_pending?' · Pending':'')+'</div></div><div class="amount '+(Number(t.amount)>=0?'positive':'negative')+'">'+(Number(t.amount)>0?'+':'−')+money(Math.abs(Number(t.amount)))+'</div></div>').join():'<div class="empty">No transactions yet. Your imported transactions will appear here.</div>';
+ $('transactionsList').innerHTML=tx.length?tx.slice(0,visibleTransactionCount).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+(t.is_pending?' · Pending':'')+'</div></div><div class="amount '+(Number(t.amount)>=0?'positive':'negative')+'">'+(Number(t.amount)>0?'+':'−')+money(Math.abs(Number(t.amount)))+'</div></div>').join():'<div class="empty">No transactions yet. Your imported transactions will appear here.</div>';
  $('transactionsMore').classList.toggle('hidden',tx.length<=4);
- $('transactionsMore').textContent=showAllTransactions?'Show less':'Show more';
+ $('transactionsMore').textContent='Show 4 more';
  $('lastSynced').textContent=cr.data?.last_synced_at?'Last synced '+new Date(cr.data.last_synced_at).toLocaleString('en-NZ'):'Not synced yet';
 }
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();clearMessage('authMessage');$('signInButton').disabled=true;try{const {data,error}=await supabase.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;await setView(data.user);}catch(err){showMessage('authMessage',err.message||'Could not sign in.','error');}finally{$('signInButton').disabled=false;}});
 $('signUpButton').addEventListener('click',async()=>{clearMessage('authMessage');$('signUpButton').disabled=true;try{const {data,error}=await supabase.auth.signUp({email:$('email').value.trim(),password:$('password').value});if(error)throw error;if(data.session&&data.user)await setView(data.user);else showMessage('authMessage','Account request submitted. Check your email to confirm, then sign in.','success');}catch(err){showMessage('authMessage',err.message||'Could not create account.','error');}finally{$('signUpButton').disabled=false;}});
-$('transactionsMore').addEventListener('click',()=>{showAllTransactions=!showAllTransactions;loadData();});
+$('transactionsMore').addEventListener('click',()=>{visibleTransactionCount+=4;loadData();});
  $('signOutButton').addEventListener('click',async()=>{await supabase.auth.signOut();await setView(null);});
 $('copyUserId').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(sessionUser.id);$('copyUserId').textContent='Copied';setTimeout(()=> $('copyUserId').textContent='Copy user ID',1600);}catch{$('copyUserId').textContent='Select ID above';}});
 $('syncButton').addEventListener('click',async()=>{const b=$('syncButton');b.disabled=true;b.textContent='Syncing…';clearMessage('message');try{const {data,error}=await supabase.functions.invoke('akahu-sync',{body:{}});if(error)throw error;if(data?.error)throw new Error(data.error);showMessage('message','Sync complete: '+data.accounts_synced+' accounts and '+data.transactions_synced+' transactions imported.','success');await loadData();}catch(err){showMessage('message','Sync did not complete. '+(err.message||'Check the Edge Function secrets and setup status below.'),'error');}finally{b.disabled=false;b.textContent='↻ Sync Kiwibank';}});
