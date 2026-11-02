@@ -65,14 +65,15 @@ async function loadData(){
  const mr=await supabase.from('finance_transactions').select('amount,is_pending,transaction_date').eq('user_id',sessionUser.id).gte('transaction_date',monthStart).lt('transaction_date',monthEnd).eq('is_pending',false);
  if(mr.error){showMessage('message','Could not load monthly transaction totals. '+mr.error.message,'error');return;}
  const accounts=ar.data||[], tx=tr.data||[], monthTx=mr.data||[];
+ const countedMonthTx=monthTx.filter(t=>![t.merchant_name,t.description].some(v=>String(v||'').trim().toUpperCase()==='P W MILLER'));
  $('totalBalance').textContent=accounts.reduce((s,a)=>s+Number(a.current_balance||0),0).toLocaleString('en-NZ',{style:'currency',currency:'NZD'});
  const monthName=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(monthStart+'T12:00:00Z'));
  $('moneyInLabel').textContent='Money in · '+monthName;
  $('moneyOutLabel').textContent='Money out · '+monthName;
- $('moneyInNote').textContent=monthTx.filter(t=>Number(t.amount)>0).length+' settled incoming transactions · latest active month';
- $('moneyOutNote').textContent=monthTx.filter(t=>Number(t.amount)<0).length+' settled outgoing transactions · latest active month';
- $('moneyIn').textContent=money(monthTx.filter(t=>Number(t.amount)>0).reduce((s,t)=>s+Number(t.amount),0));
- $('moneyOut').textContent=money(Math.abs(monthTx.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Number(t.amount),0)));
+ $('moneyInNote').textContent=countedMonthTx.filter(t=>Number(t.amount)>0).length+' settled incoming transactions · excluding P W MILLER';
+ $('moneyOutNote').textContent=countedMonthTx.filter(t=>Number(t.amount)<0).length+' settled outgoing transactions · excluding P W MILLER';
+ $('moneyIn').textContent=money(countedMonthTx.filter(t=>Number(t.amount)>0).reduce((s,t)=>s+Number(t.amount),0));
+ $('moneyOut').textContent=money(Math.abs(countedMonthTx.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Number(t.amount),0)));
  $('accountCount').textContent=accounts.length+' account'+(accounts.length===1?'':'s');
  $('accountsList').innerHTML=accounts.length?accounts.map(a=>'<div class="item"><div><div class="item-name">'+escapeHtml(a.name)+'</div><div class="sub">'+escapeHtml(a.institution||'Bank')+' · '+escapeHtml(a.account_type||'Account')+'</div></div><div class="amount">'+money(a.current_balance)+'</div></div>').join():'<div class="empty">No accounts synced yet. Sync will import connected accounts.</div>';
  $('transactionsList').innerHTML=tx.length?tx.slice(0,30).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+(t.is_pending?' · Pending':'')+'</div></div><div class="amount '+(Number(t.amount)>=0?'positive':'negative')+'">'+(Number(t.amount)>0?'+':'−')+money(Math.abs(Number(t.amount)))+'</div></div>').join():'<div class="empty">No transactions yet. Your imported transactions will show here.</div>';
