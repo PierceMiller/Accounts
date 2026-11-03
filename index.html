@@ -24,7 +24,7 @@
 </div>
 <div id="appView" class="shell hidden">
   <header class="top"><div class="brand"><div class="logo">A</div><div><div class="eyebrow">Private finance</div><h1>Accounts</h1></div></div><div style="display:flex;align-items:center;gap:12px"><small id="userLabel"></small><button class="secondary small-button" id="signOutButton">Sign out</button></div></header>
-  <section class="hero"><div><div class="eyebrow">Your money, in one place</div><h2>Financial overview</h2><p>New Zealand dollars · Private to your account</p></div><div class="actions"><button id="syncButton">↻ Sync Kiwibank</button></div></section>
+  <section class="hero"><div><div class="eyebrow">Your money, in one place</div><h2>Financial overview</h2><p>New Zealand dollars · Private to your account</p></div><div class="actions"><button class="secondary" id="downloadReportButton" type="button">↓ Download monthly report (PDF)</button><button id="syncButton">↻ Sync Kiwibank</button></div></section>
   <div id="message" class="notice hidden"></div>
   <section class="grid">
     <article class="card"><div class="metric-label">Total account balance</div><div class="metric" id="totalBalance">—</div><div class="metric-note">Across synced accounts</div></article>
@@ -199,6 +199,48 @@ async function loadData(){
  $('transactionsMore').textContent='Show 4 more';
  $('lastSynced').textContent=cr.data?.last_synced_at?'Last synced '+new Date(cr.data.last_synced_at).toLocaleString('en-NZ'):'Not synced yet';
 }
+
+ async function downloadMonthlyReport(){
+  const btn=$('downloadReportButton');btn.disabled=true;btn.textContent='Preparing report…';
+  try{
+   const latest=await supabase.from('finance_transactions').select('transaction_date').eq('user_id',sessionUser.id).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1).maybeSingle();
+   if(latest.error)throw latest.error;
+   const monthStart=latest.data?.transaction_date?latest.data.transaction_date.slice(0,7)+'-01':monthRange().start;
+   const [year,month]=monthStart.split('-').map(Number),monthEnd=month===12?(year+1)+'-01-01':year+'-'+String(month+1).padStart(2,'0')+'-01';
+   const results=await Promise.all([
+    supabase.from('finance_accounts').select('name,institution,account_type,current_balance').eq('user_id',sessionUser.id).eq('is_active',true).order('name'),
+    supabase.from('finance_transactions').select('transaction_date,description,merchant_name,amount,transaction_type,is_pending').eq('user_id',sessionUser.id).gte('transaction_date',monthStart).lt('transaction_date',monthEnd).eq('is_pending',false).order('transaction_date'),
+    supabase.from('finance_recurring_items').select('name,amount,frequency,status,item_type,next_due_on').eq('user_id',sessionUser.id).order('name'),
+    supabase.from('finance_budgets').select('name,amount,period,is_active,category_id').eq('user_id',sessionUser.id).eq('is_active',true)
+   ]);
+   results.forEach(r=>{if(r.error)throw r.error});
+   const [ar,tr,sr,br]=results,tx=tr.data||[];
+   const counted=tx.filter(t=>String(t.transaction_type||'').toUpperCase()!=='TRANSFER'&&!/\\bTRANSFER\\b|\\bTRF\\b|P W MILLER/i.test(String(t.merchant_name||'')+' '+String(t.description||'')));
+   const inc=counted.filter(t=>Number(t.amount)>0).reduce((s,t)=>s+Number(t.amount),0),out=Math.abs(counted.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Number(t.amount),0));
+   const fmt=n=>Number(n||0).toLocaleString('en-NZ',{style:'currency',currency:'NZD'});
+   const esc=s=>String(s??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+   const mn=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(monthStart+'T12:00:00Z'));
+   const rows=(arr,fn,empty,cols)=>arr.length?arr.map(fn).join(''):'<tr><td colspan="'+cols+'">'+empty+'</td></tr>';
+   const win=window.open('','_blank');if(!win)throw new Error('Pop-up blocked. Allow pop-ups for this site and try again.');
+   const accountRows=rows(ar.data||[],a=>'<tr><td>'+esc(a.name)+'</td><td>'+esc(a.institution||'Bank')+'</td><td>'+esc(a.account_type||'Account')+'</td><td class="num">'+fmt(a.current_balance)+'</td></tr>','No active accounts',4);
+   const txRows=rows(tx,t=>'<tr><td>'+esc(t.transaction_date)+'</td><td>'+esc(t.merchant_name||t.description||'Transaction')+'</td><td>'+esc(t.transaction_type||'')+'</td><td class="num '+(Number(t.amount)>=0?'pos':'neg')+'">'+(Number(t.amount)>0?'+':'')+fmt(t.amount)+'</td></tr>','No settled transactions',4);
+   const subRows=rows(sr.data||[],x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.item_type||'payment')+'</td><td>'+esc(x.frequency||'')+'</td><td>'+esc(x.status||'')+'</td><td class="num">'+fmt(x.amount)+'</td></tr>','No recurring items saved',5);
+   const budgetRows=rows(br.data||[],x=>'<tr><td>'+esc(financeCategories.find(c=>c.id===x.category_id)?.name||x.name)+'</td><td>'+esc(x.period)+'</td><td class="num">'+fmt(x.amount)+'</td></tr>','No active budgets saved',3);
+   win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${mn} Finance Report</title><style>
+   @page{size:A4;margin:14mm}body{font:11px/1.45 Arial,sans-serif;color:#1b2b37}h1{font-size:25px;margin:0 0 4px;color:#153044}h2{font-size:15px;margin:22px 0 8px;color:#153044}.muted{color:#526573}.kpis{display:flex;gap:10px;margin:16px 0}.kpi{flex:1;padding:12px;border:1px solid #d9e2e8;background:#f5f8fa}.kpi span{display:block;color:#526573}.kpi strong{font-size:18px;display:block;margin-top:5px}.pos{color:#18794e}.neg{color:#a33c35}table{border-collapse:collapse;width:100%;margin:8px 0 16px}th,td{padding:6px 7px;border-bottom:1px solid #dce4e9;text-align:left;vertical-align:top}th{background:#eef3f6;font-size:10px}.num{text-align:right;white-space:nowrap}.note{font-size:9px;color:#5b6c78;margin-top:18px}button{padding:10px 14px;background:#153044;color:white;border:0;border-radius:6px;font-weight:bold}@media print{button{display:none}}</style></head><body>
+   <button onclick="window.print()">Print / Save as PDF</button><h1>${mn} Finance Report</h1><div class="muted">Accounts · Personal finance dashboard · NZD</div>
+   <div class="kpis"><div class="kpi"><span>Money in</span><strong class="pos">${fmt(inc)}</strong><span>${counted.filter(t=>Number(t.amount)>0).length} settled transactions</span></div><div class="kpi"><span>Money out</span><strong class="neg">${fmt(out)}</strong><span>${counted.filter(t=>Number(t.amount)<0).length} settled transactions</span></div><div class="kpi"><span>Net cash flow</span><strong class="${inc-out>=0?'pos':'neg'}">${fmt(inc-out)}</strong><span>In minus out</span></div></div>
+   <h2>Dashboard income-based plan</h2><table><tbody><tr><td>Expected monthly income</td><td class="num">${esc($('planIncome').textContent)}</td></tr><tr><td>Estimated monthly spending</td><td class="num">${esc($('planSpending').textContent)}</td></tr><tr><td>Available after spending</td><td class="num">${esc($('planRemainder').textContent)}</td></tr></tbody></table><p>${esc($('planIncomeDetail').textContent)}</p>
+   <h2>Accounts and balances</h2><table><thead><tr><th>Account</th><th>Institution</th><th>Type</th><th class="num">Balance</th></tr></thead><tbody>${accountRows}</tbody></table>
+   <h2>All settled transactions for ${mn}</h2><p class="muted">Cash-flow totals exclude internal transfers and transactions matching P W MILLER. The transaction list includes all settled transactions for transparency.</p><table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th class="num">Amount</th></tr></thead><tbody>${txRows}</tbody></table>
+   <h2>Subscriptions and recurring payments</h2><table><thead><tr><th>Name</th><th>Kind</th><th>Frequency</th><th>Status</th><th class="num">Amount</th></tr></thead><tbody>${subRows}</tbody></table>
+   <h2>Active budgets</h2><table><thead><tr><th>Category</th><th>Period</th><th class="num">Budget limit</th></tr></thead><tbody>${budgetRows}</tbody></table>
+   <p class="note">Generated from your signed-in dashboard on ${new Date().toLocaleDateString('en-NZ')}. Totals use the same settled transaction and transfer-exclusion rules as the dashboard. Check against your bank statement before using for formal accounting.</p></body></html>`);
+   win.document.close();win.focus();setTimeout(()=>{try{win.print()}catch{}},400);
+  }catch(err){showMessage('message','Could not prepare report: '+(err.message||'Unknown error'),'error');}
+  finally{btn.disabled=false;btn.textContent='↓ Download monthly report (PDF)';}
+ }
+ $('downloadReportButton').addEventListener('click',downloadMonthlyReport);
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();clearMessage('authMessage');$('signInButton').disabled=true;try{const {data,error}=await supabase.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;await setView(data.user);}catch(err){showMessage('authMessage',err.message||'Could not sign in.','error');}finally{$('signInButton').disabled=false;}});
 $('signUpButton').addEventListener('click',async()=>{clearMessage('authMessage');$('signUpButton').disabled=true;try{const {data,error}=await supabase.auth.signUp({email:$('email').value.trim(),password:$('password').value});if(error)throw error;if(data.session&&data.user)await setView(data.user);else showMessage('authMessage','Account request submitted. Check your email to confirm, then sign in.','success');}catch(err){showMessage('authMessage',err.message||'Could not create account.','error');}finally{$('signUpButton').disabled=false;}});
 $('transactionsMore').addEventListener('click',()=>{visibleTransactionCount+=4;loadData();});
