@@ -24,7 +24,7 @@
 </div>
 <div id="appView" class="shell hidden">
   <header class="top"><div class="brand"><div class="logo">A</div><div><div class="eyebrow">Private finance</div><h1>Accounts</h1></div></div><div style="display:flex;align-items:center;gap:12px"><small id="userLabel"></small><button class="secondary small-button" id="signOutButton">Sign out</button></div></header>
-  <section class="hero"><div><div class="eyebrow">Your money, in one place</div><h2>Financial overview</h2><p>New Zealand dollars · Private to your account</p></div><div class="actions"><button class="secondary" id="downloadReportButton" type="button">↓ Download monthly report (PDF)</button><button id="syncButton">↻ Sync Kiwibank</button></div></section>
+  <nav class="actions" style="margin:0 0 22px"><button class="secondary small-button" id="dashboardTabButton" type="button">Dashboard</button><button class="secondary small-button" id="archiveTabButton" type="button">Report archive</button></nav><div id="dashboardTab"><section class="hero"><div><div class="eyebrow">Your money, in one place</div><h2>Financial overview</h2><p>New Zealand dollars · Private to your account</p></div><div class="actions"><button class="secondary" id="downloadReportButton" type="button">↓ Download monthly report (PDF)</button><button id="syncButton">↻ Sync Kiwibank</button></div></section>
   <div id="message" class="notice hidden"></div>
   <section class="grid">
     <article class="card"><div class="metric-label">Total account balance</div><div class="metric" id="totalBalance">—</div><div class="metric-note">Across synced accounts</div></article>
@@ -60,6 +60,12 @@
 
   <section class="section"><div class="card"><div class="section-head"><h3>Setup status</h3><span class="pill">Secure connection</span></div><p class="sub">Your user ID is shown here so the account can be allow-listed for bank sync. This is not a password or token.</p><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><code id="userId" style="overflow-wrap:anywhere;color:#c7d9e8"></code><button id="copyUserId" class="secondary small-button">Copy user ID</button></div><p class="sub" style="margin-bottom:0">If syncing reports that access is not configured, add this ID as the value of the Supabase Edge Function secret <code>FINANCE_ALLOWED_USER_ID</code>. Keep all Akahu tokens in Supabase secrets.</p></div></section>
   <div class="footer">Accounts · Personal finance dashboard · Currency values shown in NZD where available.</div>
+  </div>
+  <section id="archiveTab" class="hidden">
+    <section class="hero"><div><div class="eyebrow">Your monthly reports</div><h2>Report archive</h2><p>Saved monthly snapshots, available to reopen or download as PDF.</p></div><div class="actions"><button class="secondary" id="refreshArchiveButton" type="button">↻ Refresh archive</button></div></section>
+    <div class="notice">Reports are stored privately against your signed-in account. Use “Download monthly report” on the dashboard to generate and save a report snapshot.</div>
+    <section class="section"><div class="card"><div id="archiveList" class="list"><div class="empty">Loading archived reports…</div></div></div></section>
+  </section>
 </div>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
@@ -236,10 +242,30 @@ async function loadData(){
    <h2>Subscriptions and recurring payments</h2><table><thead><tr><th>Name</th><th>Kind</th><th>Frequency</th><th>Status</th><th class="num">Amount</th></tr></thead><tbody>${subRows}</tbody></table>
    <h2>Active budgets</h2><table><thead><tr><th>Category</th><th>Period</th><th class="num">Budget limit</th></tr></thead><tbody>${budgetRows}</tbody></table>
    <p class="note">Generated from your signed-in dashboard on ${new Date().toLocaleDateString('en-NZ')}. Totals use the same settled transaction and transfer-exclusion rules as the dashboard. Check against your bank statement before using for formal accounting.</p></body></html>`);
-   win.document.close();win.focus();setTimeout(()=>{try{win.print()}catch{}},400);
+   win.document.close();
+   const reportHtml='<!doctype html>'+win.document.documentElement.outerHTML;
+   const saved=await supabase.from('finance_monthly_reports').upsert({user_id:sessionUser.id,report_month:monthStart,report_html:reportHtml,summary:{month:mn,money_in:inc,money_out:out,net:inc-out,transaction_count:tx.length}},{onConflict:'user_id,report_month'}).select('id').single();
+   if(saved.error)throw new Error('Report opened, but could not save it to the archive: '+saved.error.message);
+   await renderReportArchive();
+   win.focus();setTimeout(()=>{try{win.print()}catch{}},400);
   }catch(err){showMessage('message','Could not prepare report: '+(err.message||'Unknown error'),'error');}
   finally{btn.disabled=false;btn.textContent='↓ Download monthly report (PDF)';}
  }
+
+async function renderReportArchive(){
+ const host=$('archiveList');
+ host.innerHTML='<div class="empty">Loading archived reports…</div>';
+ const r=await supabase.from('finance_monthly_reports').select('id,report_month,generated_at,summary').eq('user_id',sessionUser.id).order('report_month',{ascending:false});
+ if(r.error){host.innerHTML='<div class="feature-empty">Could not load report archive: '+escapeHtml(r.error.message)+'</div>';return;}
+ const reports=r.data||[];
+ if(!reports.length){host.innerHTML='<div class="empty">No reports archived yet. Generate one from the Dashboard and it will appear here.</div>';return;}
+ host.innerHTML=reports.map(x=>{const month=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(x.report_month+'T12:00:00Z'));const s=x.summary||{};return '<div class="item"><div><div class="item-name">'+escapeHtml(month)+'</div><div class="sub">Generated '+new Date(x.generated_at).toLocaleString('en-NZ')+' · In '+money(s.money_in)+' · Out '+money(s.money_out)+'</div></div><div class="actions"><button class="secondary small-button" data-archive-open="'+x.id+'">Open / PDF</button></div></div>';}).join('');
+ host.querySelectorAll('[data-archive-open]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_monthly_reports').select('report_html').eq('id',b.dataset.archiveOpen).eq('user_id',sessionUser.id).single();if(q.error){showMessage('message','Could not open archived report: '+q.error.message,'error');return;}const w=window.open('','_blank');if(!w){showMessage('message','Pop-up blocked. Allow pop-ups for this site and try again.','error');return;}w.document.open();w.document.write(q.data.report_html);w.document.close();w.focus();}));
+}
+$('dashboardTabButton').addEventListener('click',()=>{$('dashboardTab').classList.remove('hidden');$('archiveTab').classList.add('hidden');});
+$('archiveTabButton').addEventListener('click',async()=>{$('dashboardTab').classList.add('hidden');$('archiveTab').classList.remove('hidden');await renderReportArchive();});
+$('refreshArchiveButton').addEventListener('click',renderReportArchive);
+
  $('downloadReportButton').addEventListener('click',downloadMonthlyReport);
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();clearMessage('authMessage');$('signInButton').disabled=true;try{const {data,error}=await supabase.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;await setView(data.user);}catch(err){showMessage('authMessage',err.message||'Could not sign in.','error');}finally{$('signInButton').disabled=false;}});
 $('signUpButton').addEventListener('click',async()=>{clearMessage('authMessage');$('signUpButton').disabled=true;try{const {data,error}=await supabase.auth.signUp({email:$('email').value.trim(),password:$('password').value});if(error)throw error;if(data.session&&data.user)await setView(data.user);else showMessage('authMessage','Account request submitted. Check your email to confirm, then sign in.','success');}catch(err){showMessage('authMessage',err.message||'Could not create account.','error');}finally{$('signUpButton').disabled=false;}});
