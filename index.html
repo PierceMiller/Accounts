@@ -181,8 +181,7 @@ async function loadData(){
   supabase.from('finance_connections').select('last_synced_at,connection_status').eq('user_id',sessionUser.id).eq('provider','akahu').maybeSingle()
  ]);
  if(ar.error||tr.error||latestResult.error){showMessage('message','Could not load finance data. Check that the database tables are exposed to the Supabase Data API and that you are signed in.','error');return;}
- const latestDate=latestResult.data?.transaction_date;
- const monthStart=latestDate?latestDate.slice(0,7)+'-01':monthRange().start;
+ const monthStart=monthRange().start;
  const [year,month]=monthStart.split('-').map(Number);
  const nextMonthStart=year+'-'+String(month===12?1:month+1).padStart(2,'0')+'-'+(month===12? '01':'01');
  const monthEnd=month===12?(year+1)+'-01-01':year+'-'+String(month+1).padStart(2,'0')+'-01';
@@ -209,9 +208,7 @@ async function loadData(){
  async function downloadMonthlyReport(){
   const btn=$('downloadReportButton');btn.disabled=true;btn.textContent='Preparing report…';
   try{
-   const latest=await supabase.from('finance_transactions').select('transaction_date').eq('user_id',sessionUser.id).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1).maybeSingle();
-   if(latest.error)throw latest.error;
-   const monthStart=latest.data?.transaction_date?latest.data.transaction_date.slice(0,7)+'-01':monthRange().start;
+   const monthStart=monthRange().start;
    const [year,month]=monthStart.split('-').map(Number),monthEnd=month===12?(year+1)+'-01-01':year+'-'+String(month+1).padStart(2,'0')+'-01';
    const results=await Promise.all([
     supabase.from('finance_accounts').select('name,institution,account_type,current_balance').eq('user_id',sessionUser.id).eq('is_active',true).order('name'),
