@@ -68,6 +68,36 @@ button{min-height:44px}
   .top .small-button{font-size:11px;padding:8px}
 }
 
+
+/* Banking-style mobile navigation and overview polish */
+@media(max-width:600px){
+  .shell{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+  #appView>nav.actions{
+    position:fixed;z-index:50;left:0;right:0;bottom:0;
+    margin:0!important;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(11,17,24,.94);backdrop-filter:blur(18px);
+    border-top:1px solid #263443;display:grid;grid-template-columns:1fr 1fr;
+    gap:10px;box-shadow:0 -10px 30px rgba(0,0,0,.22)
+  }
+  #appView>nav.actions button{min-height:46px;border-radius:13px;font-size:13px}
+  #appView>nav.actions button:not(.active){background:#182532}
+  #appView>nav.actions button.active{background:var(--green);color:#09241d;border-color:transparent}
+  .top{margin-bottom:18px}
+  .hero{padding:17px;background:linear-gradient(145deg,#172b35,#111c27);border:1px solid #2b414d;border-radius:17px}
+  .hero h2{font-size:27px;margin:6px 0}
+  .hero>.actions{gap:8px}
+  .hero>.actions button{border-radius:12px}
+  .grid>.card:first-child{background:linear-gradient(145deg,#1b3a34,#142820);border-color:#315b4d}
+  .grid>.card:first-child .metric{font-size:32px}
+  .section-head{margin-bottom:10px}
+  .section>.card{box-shadow:0 8px 24px rgba(0,0,0,.12)}
+  #accountsList .item,#transactionsList .item{padding:14px 0}
+  #dashboardTab .section:first-of-type{margin-top:16px}
+}
+@media(min-width:601px){
+  #appView>nav.actions button.active{background:var(--green);color:#09241d}
+}
+
 </style>
 </head>
 <body>
