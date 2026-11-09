@@ -350,8 +350,9 @@ async function renderReportArchive(){
  host.innerHTML=reports.map(x=>{const month=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(x.report_month+'T12:00:00Z'));const s=x.summary||{};return '<div class="item"><div><div class="item-name">'+escapeHtml(month)+'</div><div class="sub">Generated '+new Date(x.generated_at).toLocaleString('en-NZ')+' · In '+money(s.money_in)+' · Out '+money(s.money_out)+'</div></div><div class="actions"><button class="secondary small-button" data-archive-open="'+x.id+'">Open / PDF</button></div></div>';}).join('');
  host.querySelectorAll('[data-archive-open]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_monthly_reports').select('report_html').eq('id',b.dataset.archiveOpen).eq('user_id',sessionUser.id).single();if(q.error){showMessage('message','Could not open archived report: '+q.error.message,'error');return;}const w=window.open('','_blank');if(!w){showMessage('message','Pop-up blocked. Allow pop-ups for this site and try again.','error');return;}w.document.open();w.document.write(q.data.report_html);w.document.close();w.focus();}));
 }
-$('dashboardTabButton').addEventListener('click',()=>{$('dashboardTab').classList.remove('hidden');$('archiveTab').classList.add('hidden');});
-$('archiveTabButton').addEventListener('click',async()=>{$('dashboardTab').classList.add('hidden');$('archiveTab').classList.remove('hidden');await renderReportArchive();});
+$('dashboardTabButton').classList.add('active');
+$('dashboardTabButton').addEventListener('click',()=>{$('dashboardTab').classList.remove('hidden');$('archiveTab').classList.add('hidden');$('dashboardTabButton').classList.add('active');$('archiveTabButton').classList.remove('active');});
+$('archiveTabButton').addEventListener('click',async()=>{$('dashboardTab').classList.add('hidden');$('archiveTab').classList.remove('hidden');$('archiveTabButton').classList.add('active');$('dashboardTabButton').classList.remove('active');await renderReportArchive();});
 $('refreshArchiveButton').addEventListener('click',renderReportArchive);
 
  $('downloadReportButton').addEventListener('click',downloadMonthlyReport);
