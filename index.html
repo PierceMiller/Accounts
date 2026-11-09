@@ -98,6 +98,20 @@ button{min-height:44px}
   #appView>nav.actions button.active{background:var(--green);color:#09241d}
 }
 
+
+/* Keep monthly-plan figures readable on narrow screens */
+.plan-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.plan-metrics>div{min-width:0;overflow-wrap:anywhere}
+.plan-metrics .metric{font-size:clamp(20px,2.4vw,30px);overflow-wrap:anywhere}
+.plan-metrics .metric-label,.plan-metrics .metric-note{overflow-wrap:anywhere}
+@media(max-width:750px){
+  .plan-metrics{grid-template-columns:1fr}
+  .plan-metrics>div{padding:10px 0;border-bottom:1px solid var(--line)}
+  .plan-metrics>div:last-child{border-bottom:0}
+  .plan-metrics .metric{font-size:26px;margin:5px 0 2px}
+  .plan-metrics .metric-label{font-size:13px}
+}
+
 </style>
 </head>
 <body>
@@ -123,7 +137,7 @@ button{min-height:44px}
   </section>
 
   <section class="section"><div class="section-head"><h3>Your income-based monthly plan</h3><span class="pill">Auto-calculated</span></div><div class="card">
-    <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="grid plan-metrics">
       <div><div class="metric-label">Expected monthly income</div><div class="metric positive" id="planIncome">—</div><div class="metric-note">Salary + household rent contribution</div></div>
       <div><div class="metric-label">Estimated monthly spending</div><div class="metric" id="planSpending">—</div><div class="metric-note">Based on imported settled transactions</div></div>
       <div><div class="metric-label">Available after spending</div><div class="metric" id="planRemainder">—</div><div class="metric-note">Potential savings / buffer</div></div>
