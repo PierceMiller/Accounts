@@ -161,8 +161,9 @@ button{min-height:44px}
       <article class="card"><div class="metric-label">Savings target · monthly</div><div class="metric" id="aiSavingsTarget">—</div><div class="metric-note">15% of average recognised household income</div></article>
       <article class="card"><div class="metric-label">Recognised monthly income</div><div class="metric" id="aiMonthlyIncome">—</div><div class="metric-note" id="aiIncomeDetail">Based on recurring fortnightly income</div></article>
     </section>
-    <section class="section"><div class="section-head"><h3>Safe-to-Spend breakdown</h3><span class="pill">Monthly limits</span></div><div class="card"><p class="sub">These are your saved monthly category limits. Their combined total is your hard spending cap; staying within it protects the savings target.</p><div id="aiCategoryLimits" class="list"><div class="feature-empty">Building your category limits…</div></div></div></section>
-    <section class="section"><div class="section-head"><h3>Savings Plan</h3><span class="pill">Actionable opportunities</span></div><div class="card"><div id="aiSavingsActions" class="list"><div class="feature-empty">Looking for practical savings opportunities…</div></div></div></section>
+    <section class="section"><div class="section-head"><h3>Actual monthly breakdown</h3><input id="breakdownMonth" type="month" aria-label="Select breakdown month" style="padding:9px;border:1px solid #354759;border-radius:9px;background:#0b131c;color:var(--text);min-height:42px"></div><div class="card"><div class="sub" id="breakdownPeriodNote">Actual settled transactions for the selected month · New Zealand time</div><div class="grid" style="margin-top:12px"><article><div class="metric-label">Income</div><div class="metric positive" id="breakdownIncome">—</div></article><article><div class="metric-label">Spending</div><div class="metric negative" id="breakdownSpending">—</div></article><article><div class="metric-label">Net savings / surplus</div><div class="metric" id="breakdownSavings">—</div></article></div><div class="item"><div><div class="item-name">Savings target (15% of income)</div><div class="sub">Actual month income, less transfers</div></div><div class="amount" id="breakdownSavingsTarget">—</div></div><div class="item"><div><div class="item-name">Uncategorised spending</div><div class="sub" id="breakdownUncategorisedCount">Transactions without a category</div></div><div class="amount" id="breakdownUncategorised">—</div></div></div></section>
+    <section class="section"><div class="section-head"><h3>Category budgets vs actual spending</h3><span class="pill">Selected month</span></div><div class="card"><p class="sub">Actual spending is grouped by your saved transaction categories. Expand any category to see the transactions behind its total. Uncategorised is kept separate from genuine Other spending.</p><div id="aiCategoryLimits" class="list"><div class="feature-empty">Building your category limits…</div></div></div></section>
+    <section class="section"><div class="section-head"><h3>Savings Plan</h3></h3><span class="pill">Actionable opportunities</span></div><div class="card"><div id="aiSavingsActions" class="list"><div class="feature-empty">Looking for practical savings opportunities…</div></div></div></section>
     <section class="section"><div class="card"><div class="section-head"><h3>How this budget is calculated</h3><span class="pill">Transparent estimates</span></div><div class="sub">Uses your signed-in Account Dashboard data: recognised Rothbury salary and partner rent contribution, settled transaction history, and active recurring subscriptions. Transfers between your own accounts and P W MILLER transactions are excluded. The analysis is generated locally in the dashboard using transparent budgeting rules; it does not send your financial data to an external AI service.</div><div class="sub" id="aiBudgetUpdated" style="margin-top:10px"></div></div></section>
   </section>
   <section id="archiveTab" class="hidden">
@@ -183,7 +184,7 @@ const money = n => new Intl.NumberFormat('en-NZ',{style:'currency',currency:'NZD
 function showMessage(id, text, type='') { const el=$(id); el.textContent=text; el.className='notice'+(type?' '+type:''); el.classList.remove('hidden'); }
 function clearMessage(id){$(id).classList.add('hidden')}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function dateLabel(s){if(!s)return '';const d=new Date(s+'T12:00:00');return Number.isNaN(d.getTime())?'':d.toLocaleDateString('en-NZ',{day:'numeric',month:'short'});}
+function dateLabel(s){if(!s)return '';const m=String(s).match(/^(\\d{4})-(\\d{2})-(\\d{2})/);return m?new Intl.DateTimeFormat('en-NZ',{day:'numeric',month:'short',timeZone:'Pacific/Auckland'}).format(new Date(Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),12))):'';}
 function monthRange(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Pacific/Auckland',year:'numeric',month:'2-digit'}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));const year=Number(p.year),month=Number(p.month);const nextYear=month===12?year+1:year;const nextMonth=month===12?1:month+1;return {start:year+'-'+String(month).padStart(2,'0')+'-01',end:nextYear+'-'+String(nextMonth).padStart(2,'0')+'-01'};}
 
 
@@ -226,58 +227,66 @@ async function renderTransactionsPage(){
  host.querySelectorAll('[data-transaction-category]').forEach(sel=>{const row=rows.find(t=>t.id===sel.dataset.transactionCategory);sel.value=row?.category_id||'';sel.addEventListener('change',async()=>{sel.disabled=true;const result=await supabase.from('finance_transactions').update({category_id:sel.value||null}).eq('id',sel.dataset.transactionCategory).eq('user_id',sessionUser.id).select('id').maybeSingle();if(result.error||!result.data){showMessage('message','Could not save category change: '+(result.error?.message||'No transaction was updated.'),'error');sel.value=row?.category_id||'';}else{row.category_id=sel.value||null;showMessage('message','Transaction category saved.','success');}sel.disabled=false;});});
 }
 
+async function fetchAllTransactions(buildQuery){
+ const all=[];const pageSize=1000;let from=0;
+ while(true){const r=await buildQuery().range(from,from+pageSize-1);if(r.error)throw r.error;const batch=r.data||[];all.push(...batch);if(batch.length<pageSize)break;from+=pageSize;}
+ return all;
+}
+function selectedBreakdownMonth(){
+ const el=$('breakdownMonth');if(el?.value&&/^\\d{4}-\\d{2}$/.test(el.value))return el.value;
+ return monthRange().start.slice(0,7);
+}
+function monthBounds(month){const [y,m]=month.split('-').map(Number);const nextY=m===12?y+1:y,nextM=m===12?1:m+1;return {start:month+'-01',end:nextY+'-'+String(nextM).padStart(2,'0')+'-01'};}
+function monthOffset(month,delta){const [y,m]=month.split('-').map(Number);const d=new Date(Date.UTC(y,m-1+delta,1));return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-01';}
 async function renderAIBudget(){
  const host=$('aiCategoryLimits'),actions=$('aiSavingsActions');
- host.innerHTML='<div class="feature-empty">Loading your saved monthly limits…</div>';actions.innerHTML='<div class="feature-empty">Reviewing recent spending…</div>';
- const since=new Date(Date.now()-90*86400000).toISOString().slice(0,10);
- const [txRes,subRes,budgetRes]=await Promise.all([
-  supabase.from('finance_transactions').select('transaction_date,description,merchant_name,amount,transaction_type,is_pending,category_id').eq('user_id',sessionUser.id).gte('transaction_date',since).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1500),
-  supabase.from('finance_recurring_items').select('name,amount,frequency,status,item_type').eq('user_id',sessionUser.id).eq('status','active'),
-  supabase.from('finance_budgets').select('name,amount,period,category_id').eq('user_id',sessionUser.id).eq('is_active',true).eq('period','monthly')
- ]);
- if(txRes.error||budgetRes.error){const err=txRes.error||budgetRes.error;$('aiBudgetStatus').className='notice error';$('aiBudgetStatus').textContent='Could not load budget data: '+err.message;host.innerHTML='';actions.innerHTML='';return;}
- const rows=txRes.data||[],budgets=budgetRes.data||[];
- const isTransfer=t=>String(t.transaction_type||'').toUpperCase()==='TRANSFER'||/\bTRANSFER\b|\bTRF\b|P W MILLER/i.test((t.description||'')+' '+(t.merchant_name||''));
- const credits=rows.filter(t=>Number(t.amount)>0&&!isTransfer(t));
- const salary=credits.filter(t=>/SALARY\s+ROTHBURY|ROTHBURY\s+LTD/i.test((t.description||'')+' '+(t.merchant_name||'')));
- const rent=credits.filter(t=>/AUTOMATIC PAYMENT RENT|DIRECT CREDIT RENT/i.test((t.description||'')+' '+(t.merchant_name||'')));
- const average=arr=>arr.length?arr.reduce((n,t)=>n+Number(t.amount),0)/arr.length:0;
- const categoryName=t=>financeCategories.find(c=>c.id===t.category_id)?.name||'Other';
- const salaryPay=average(salary),rentPay=average(rent);
- const monthlyIncome=(salaryPay+rentPay)*26/12,savingsTarget=monthlyIncome*.15;
- const expenses=rows.filter(t=>Number(t.amount)<0&&!isTransfer(t));
- const dates=rows.map(t=>new Date(t.transaction_date+'T12:00:00').getTime()).filter(Number.isFinite);
- const observedDays=dates.length?Math.max(30,Math.min(90,(Math.max(...dates)-Math.min(...dates))/86400000+1)):90,scale=30.4375/observedDays,grouped={};
- expenses.forEach(t=>{const cat=categoryName(t);grouped[cat]=(grouped[cat]||0)+Math.abs(Number(t.amount)||0);});
- const spend=Object.entries(grouped).map(([name,total])=>({name,monthly:total*scale}));
- const monthStart=monthRange().start,monthGrouped={};
- expenses.filter(t=>t.transaction_date>=monthStart).forEach(t=>{const cat=categoryName(t);monthGrouped[cat]=(monthGrouped[cat]||0)+Math.abs(Number(t.amount)||0);});
- const monthTotal=Object.values(monthGrouped).reduce((n,x)=>n+x,0);
- const categoryLimits=budgets.map(b=>{const name=financeCategories.find(c=>c.id===b.category_id)?.name||b.name;const recent=spend.find(x=>x.name===name);return {name,limit:Number(b.amount)||0,monthly:recent?.monthly||0,monthToDate:monthGrouped[name]||0};}).sort((x,y)=>y.limit-x.limit);
- const budgetTotal=categoryLimits.reduce((n,x)=>n+x.limit,0),safeMonthly=budgetTotal;
- const activeSubs=(subRes.data||[]).filter(x=>x.item_type==='subscription');
- const subscriptionMonthly=activeSubs.reduce((n,x)=>n+monthlyEquivalent(x),0);
- $('aiSafeMonthly').textContent=money(safeMonthly);
- $('aiSafeWeekly').textContent='Weekly allowance: '+money(safeMonthly/4.345)+' · hard monthly cap '+money(safeMonthly);
- $('aiSavingsTarget').textContent=money(savingsTarget);
- $('aiMonthlyIncome').textContent=money(monthlyIncome);
- $('aiIncomeDetail').textContent='Average salary '+money(salaryPay)+' + partner rent '+money(rentPay)+' per fortnight';
- $('aiBudgetStatus').className='notice '+(budgets.length&&rows.length?'success':'');
- $('aiBudgetStatus').textContent=budgets.length?'Month-to-date spending is '+money(monthTotal)+' of your '+money(budgetTotal)+' monthly cap ('+money(Math.max(0,budgetTotal-monthTotal))+' remaining). Staying within this cap protects an estimated '+money(savingsTarget)+' monthly savings target (15% of recognised household income).': 'No active monthly category limits are saved yet. Add budget limits to establish your spending cap.';
- host.innerHTML=categoryLimits.length?categoryLimits.map(x=>{const pct=x.limit?Math.min(100,x.monthToDate/x.limit*100):0;const over=x.monthToDate>x.limit;return '<div class="item" style="display:block"><div style="display:flex;justify-content:space-between;gap:12px"><div><div class="item-name">'+escapeHtml(x.name)+'</div><div class="sub">This month '+money(x.monthToDate)+' · recent average '+money(x.monthly)+'/month</div></div><div style="text-align:right"><div class="amount">'+money(x.limit)+'</div><div class="sub">monthly limit</div></div></div><div class="progress"><span style="width:'+pct+'%;'+(over?'background:var(--danger,#d66)':'')+'"></span></div><div class="sub" style="margin-top:5px">'+(over?'Over this month’s limit by '+money(x.monthToDate-x.limit):money(Math.max(0,x.limit-x.monthToDate))+' remaining this month')+'</div></div>';}).join(''):'<div class="feature-empty">No monthly limits found. Your budget setup needs to be completed.</div>';
- const overs=categoryLimits.filter(x=>x.monthToDate>x.limit).sort((x,y)=>(y.monthToDate-y.limit)-(x.monthToDate-x.limit));
- const insights=overs.slice(0,4).map(x=>'<div class="item"><div><div class="item-name">'+escapeHtml(x.name)+' · '+money(x.monthly-x.limit)+' over its limit</div><div class="sub">Recent average '+money(x.monthly)+' against a '+money(x.limit)+' monthly cap. Aim to bring this category back within its limit.</div></div><span class="amount">'+money(x.limit)+'</span></div>');
- if(activeSubs.length)insights.push('<div class="item"><div><div class="item-name">Review recurring payments · '+money(subscriptionMonthly)+'/month</div><div class="sub">'+activeSubs.length+' active recurring subscription items. Check that each is still needed and correctly classified.</div></div><span class="amount">Review</span></div>');
- if(!insights.length)insights.push('<div class="notice success">Your recent category averages are currently within the saved limits. Keep the monthly cap in place and move any underspend into savings.</div>');
- actions.innerHTML=insights.join('');
- $('aiBudgetUpdated').textContent='Saved monthly limits loaded from your finance budget records. Analysis refreshed '+new Date().toLocaleString('en-NZ')+'. Savings target is calculated from average salary and partner rent deposits over the last 90 days.';
+ host.innerHTML='<div class="feature-empty">Loading all transactions for the selected month…</div>';actions.innerHTML='<div class="feature-empty">Reviewing spending…</div>';
+ const month=selectedBreakdownMonth();$('breakdownMonth').value=month;
+ const bounds=monthBounds(month);
+ $('breakdownPeriodNote').textContent='Settled transactions from '+dateLabel(bounds.start)+' to '+dateLabel(new Date(Date.parse(bounds.end+'T00:00:00Z')-86400000).toISOString().slice(0,10))+' · Pacific/Auckland';
+ try{
+  const [monthRows,allBudgets,subRes]=await Promise.all([
+   fetchAllTransactions(()=>supabase.from('finance_transactions').select('id,transaction_date,description,merchant_name,amount,transaction_type,is_pending,category_id').eq('user_id',sessionUser.id).gte('transaction_date',bounds.start).lt('transaction_date',bounds.end).eq('is_pending',false).order('transaction_date',{ascending:true}).order('id',{ascending:true})),
+   supabase.from('finance_budgets').select('name,amount,period,category_id').eq('user_id',sessionUser.id).eq('is_active',true).eq('period','monthly'),
+   supabase.from('finance_recurring_items').select('name,amount,frequency,status,item_type').eq('user_id',sessionUser.id).eq('status','active')
+  ]);
+  if(allBudgets.error||subRes.error)throw allBudgets.error||subRes.error;
+  const budgets=allBudgets.data||[];
+  const isTransfer=t=>String(t.transaction_type||'').toUpperCase()==='TRANSFER'||/\\bTRANSFER\\b|\\bTRF\\b|P W MILLER/i.test((t.description||'')+' '+(t.merchant_name||''));
+  const valid=monthRows.filter(t=>!isTransfer(t));
+  const incomeRows=valid.filter(t=>Number(t.amount)>0),expenseRows=valid.filter(t=>Number(t.amount)<0);
+  const income=incomeRows.reduce((n,t)=>n+Number(t.amount),0),spending=expenseRows.reduce((n,t)=>n+Math.abs(Number(t.amount)),0),net=income-spending;
+  const savingsTarget=income*.15;
+  $('breakdownIncome').textContent=money(income);$('breakdownSpending').textContent=money(spending);$('breakdownSavings').textContent=money(net);$('breakdownSavings').className='metric '+(net>=0?'positive':'negative');$('breakdownSavingsTarget').textContent=money(savingsTarget);
+  const categoryById=new Map(financeCategories.map(c=>[c.id,c]));
+  const catName=t=>t.category_id?(categoryById.get(t.category_id)?.name||'Other'):'Uncategorised';
+  const grouped={};expenseRows.forEach(t=>{const name=catName(t);(grouped[name]??=[]).push(t);});
+  const uncat=grouped['Uncategorised']||[];const uncatTotal=uncat.reduce((n,t)=>n+Math.abs(Number(t.amount)),0);
+  $('breakdownUncategorised').textContent=money(uncatTotal);$('breakdownUncategorisedCount').textContent=uncat.length+' transaction'+(uncat.length===1?'':'s')+' needing a category';
+  const budgetByName=new Map(budgets.map(b=>[categoryById.get(b.category_id)?.name||b.name,Number(b.amount)||0]));
+  const names=[...new Set([...Object.keys(grouped),...budgetByName.keys()])].sort((a,b)=>a==='Uncategorised'?-1:b==='Uncategorised'?1:a.localeCompare(b));
+  const rowsHtml=names.map(name=>{
+   const tx=grouped[name]||[],spent=tx.reduce((n,t)=>n+Math.abs(Number(t.amount)),0),limit=budgetByName.get(name),hasBudget=budgetByName.has(name),remaining=hasBudget?limit-spent:null,pct=hasBudget&&limit>0?Math.min(100,spent/limit*100):0,over=hasBudget&&spent>limit;
+   const txHtml=tx.slice().sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date)).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+' · '+escapeHtml(t.description||'')+'</div></div><div class="amount negative">−'+money(Math.abs(Number(t.amount)))+'</div></div>').join('');
+   return '<details class="item" style="display:block"><summary style="display:flex;justify-content:space-between;gap:12px;align-items:center;cursor:pointer;list-style-position:inside"><span><strong>'+escapeHtml(name)+'</strong><span class="sub" style="display:block;margin-left:18px">'+tx.length+' transaction'+(tx.length===1?'':'s')+'</span></span><span style="text-align:right"><strong class="amount">'+money(spent)+'</strong><span class="sub" style="display:block">'+(hasBudget?'Budget '+money(limit):'No budget set')+'</span></span></summary><div style="margin:10px 0 0 18px"><div class="sub">'+(hasBudget?(over?'Over budget by '+money(-remaining):money(remaining)+' remaining'):'Set a monthly budget to track remaining allowance')+'</div>'+(hasBudget?'<div class="progress '+(over?'over':'')+'"><span style="width:'+pct+'%"></span></div>':'')+(txHtml||'<div class="sub" style="padding:12px 0">No spending in this category during the selected month.</div>')+'</div></details>';
+  }).join('');
+  host.innerHTML=rowsHtml||'<div class="empty">No spending or budgets found for this month.</div>';
+  $('aiSafeMonthly').textContent=money(budgets.reduce((n,b)=>n+(Number(b.amount)||0),0));
+  $('aiSafeWeekly').textContent='Weekly equivalent: '+money(budgets.reduce((n,b)=>n+(Number(b.amount)||0),0)/4.345)+' · saved monthly limits';
+  $('aiSavingsTarget').textContent=money(savingsTarget);$('aiMonthlyIncome').textContent=money(income);
+  $('aiIncomeDetail').textContent=incomeRows.length+' settled incoming transactions in '+month;
+  $('aiBudgetStatus').className='notice '+(monthRows.length?'success':'');
+  $('aiBudgetStatus').textContent=monthRows.length?'For '+month+', actual income is '+money(income)+', spending is '+money(spending)+', and net surplus is '+money(net)+'. Transfers and P W MILLER transactions are excluded.':'No settled transactions found for '+month+'.';
+  const overs=names.filter(n=>budgetByName.has(n)).map(n=>({name:n,spent:(grouped[n]||[]).reduce((v,t)=>v+Math.abs(Number(t.amount)),0),limit:budgetByName.get(n)})).filter(x=>x.spent>x.limit).sort((a,b)=>(b.spent-b.limit)-(a.spent-a.limit));
+  const activeSubs=(subRes.data||[]).filter(x=>x.item_type==='subscription'),subscriptionMonthly=activeSubs.reduce((n,x)=>n+monthlyEquivalent(x),0);
+  const insights=overs.slice(0,4).map(x=>'<div class="item"><div><div class="item-name">'+escapeHtml(x.name)+' · '+money(x.spent-x.limit)+' over budget</div><div class="sub">Actual '+money(x.spent)+' against '+money(x.limit)+' budget for '+month+'.</div></div></div>');
+  if(activeSubs.length)insights.push('<div class="item"><div><div class="item-name">Review recurring payments · '+money(subscriptionMonthly)+'/month</div><div class="sub">'+activeSubs.length+' active subscription items.</div></div></div>');
+  if(!insights.length)insights.push('<div class="notice success">No category budgets were exceeded in '+month+'.</div>');
+  actions.innerHTML=insights.join('');
+  $('aiBudgetUpdated').textContent='Refreshed '+new Intl.DateTimeFormat('en-NZ',{dateStyle:'medium',timeStyle:'short',timeZone:'Pacific/Auckland'}).format(new Date())+'. All settled transactions for the selected month were paged in; no 1,500-row cap.';
+ }catch(err){$('aiBudgetStatus').className='notice error';$('aiBudgetStatus').textContent='Could not load breakdown: '+(err.message||'Unknown error');host.innerHTML='';actions.innerHTML='';}
 }
 
-const defaultCategories = ['Housing','Groceries','Transport','Utilities','Entertainment','Dining out','Shopping','Health','Insurance','Subscriptions','Personal care','Other'];
-let financeCategories=[];
-let transactionPage=0;
-const transactionPageSize=50;
-let transactionSearchTimer=null;
 async function loadPlanningFeatures(){
  const catRes=await supabase.from('finance_categories').select('id,name,category_type').eq('user_id',sessionUser.id).order('name');
  if(!catRes.error){financeCategories=catRes.data||[];$('transactionCategoryFilter').innerHTML='<option value="">All categories</option><option value="__uncategorised">Uncategorised</option>'+financeCategories.map(c=>'<option value="'+c.id+'">'+escapeHtml(c.name)+'</option>').join('');}
@@ -393,7 +402,7 @@ $('transactionSearch').addEventListener('input',()=>{clearTimeout(transactionSea
 $('transactionPrev').addEventListener('click',()=>{if(transactionPage>0){transactionPage--;renderTransactionsPage();}});
 $('transactionNext').addEventListener('click',()=>{transactionPage++;renderTransactionsPage();});
 $('aiBudgetTabButton').addEventListener('click',async()=>{showTab('budget');await renderAIBudget();});
-$('refreshAIBudgetButton').addEventListener('click',renderAIBudget);
+$('refreshAIBudgetButton').addEventListener('click',renderAIBudget);\n$('breakdownMonth').value=monthRange().start.slice(0,7);$('breakdownMonth').addEventListener('change',renderAIBudget);
 $('archiveTabButton').addEventListener('click',async()=>{showTab('archive');await renderReportArchive();});
 $('refreshArchiveButton').addEventListener('click',renderReportArchive);
 
