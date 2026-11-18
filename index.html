@@ -211,7 +211,7 @@ async function renderTransactionsPage(){
  const query=$('transactionSearch').value.trim();
  let q=supabase.from('finance_transactions').select('id,transaction_date,description,merchant_name,amount,currency_code,transaction_type,is_pending,category_id',{count:'exact'}).eq('user_id',sessionUser.id).order('transaction_date',{ascending:false}).order('created_at',{ascending:false});
  if(selected==='__uncategorised')q=q.is('category_id',null);else if(selected)q=q.eq('category_id',selected);
- if(query)q=q.ilike('merchant_name','%'+query.replace(/[%]/g,'')+'%');
+ if(query){const safe=query.replace(/[%,()]/g,' ').trim();if(safe)q=q.or('merchant_name.ilike.%'+safe+'%,description.ilike.%'+safe+'%');}
  const from=transactionPage*transactionPageSize;
  const r=await q.range(from,from+transactionPageSize-1);
  if(r.error){host.innerHTML='<div class="feature-empty">Could not load transactions: '+escapeHtml(r.error.message)+'</div>';return;}
@@ -231,7 +231,7 @@ async function renderAIBudget(){
  host.innerHTML='<div class="feature-empty">Loading your saved monthly limits…</div>';actions.innerHTML='<div class="feature-empty">Reviewing recent spending…</div>';
  const since=new Date(Date.now()-90*86400000).toISOString().slice(0,10);
  const [txRes,subRes,budgetRes]=await Promise.all([
-  supabase.from('finance_transactions').select('transaction_date,description,merchant_name,amount,transaction_type,is_pending').eq('user_id',sessionUser.id).gte('transaction_date',since).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1500),
+  supabase.from('finance_transactions').select('transaction_date,description,merchant_name,amount,transaction_type,is_pending,category_id').eq('user_id',sessionUser.id).gte('transaction_date',since).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1500),
   supabase.from('finance_recurring_items').select('name,amount,frequency,status,item_type').eq('user_id',sessionUser.id).eq('status','active'),
   supabase.from('finance_budgets').select('name,amount,period,category_id').eq('user_id',sessionUser.id).eq('is_active',true).eq('period','monthly')
  ]);
@@ -242,15 +242,16 @@ async function renderAIBudget(){
  const salary=credits.filter(t=>/SALARY\s+ROTHBURY|ROTHBURY\s+LTD/i.test((t.description||'')+' '+(t.merchant_name||'')));
  const rent=credits.filter(t=>/AUTOMATIC PAYMENT RENT|DIRECT CREDIT RENT/i.test((t.description||'')+' '+(t.merchant_name||'')));
  const average=arr=>arr.length?arr.reduce((n,t)=>n+Number(t.amount),0)/arr.length:0;
+ const categoryName=t=>financeCategories.find(c=>c.id===t.category_id)?.name||'Other';
  const salaryPay=average(salary),rentPay=average(rent);
  const monthlyIncome=(salaryPay+rentPay)*26/12,savingsTarget=monthlyIncome*.15;
  const expenses=rows.filter(t=>Number(t.amount)<0&&!isTransfer(t));
  const dates=rows.map(t=>new Date(t.transaction_date+'T12:00:00').getTime()).filter(Number.isFinite);
  const observedDays=dates.length?Math.max(30,Math.min(90,(Math.max(...dates)-Math.min(...dates))/86400000+1)):90,scale=30.4375/observedDays,grouped={};
- expenses.forEach(t=>{const cat=inferredCategory(t);grouped[cat]=(grouped[cat]||0)+Math.abs(Number(t.amount)||0);});
+ expenses.forEach(t=>{const cat=categoryName(t);grouped[cat]=(grouped[cat]||0)+Math.abs(Number(t.amount)||0);});
  const spend=Object.entries(grouped).map(([name,total])=>({name,monthly:total*scale}));
  const monthStart=monthRange().start,monthGrouped={};
- expenses.filter(t=>t.transaction_date>=monthStart).forEach(t=>{const cat=inferredCategory(t);monthGrouped[cat]=(monthGrouped[cat]||0)+Math.abs(Number(t.amount)||0);});
+ expenses.filter(t=>t.transaction_date>=monthStart).forEach(t=>{const cat=categoryName(t);monthGrouped[cat]=(monthGrouped[cat]||0)+Math.abs(Number(t.amount)||0);});
  const monthTotal=Object.values(monthGrouped).reduce((n,x)=>n+x,0);
  const categoryLimits=budgets.map(b=>{const name=financeCategories.find(c=>c.id===b.category_id)?.name||b.name;const recent=spend.find(x=>x.name===name);return {name,limit:Number(b.amount)||0,monthly:recent?.monthly||0,monthToDate:monthGrouped[name]||0};}).sort((x,y)=>y.limit-x.limit);
  const budgetTotal=categoryLimits.reduce((n,x)=>n+x.limit,0),safeMonthly=budgetTotal;
@@ -279,7 +280,7 @@ const transactionPageSize=50;
 let transactionSearchTimer=null;
 async function loadPlanningFeatures(){
  const catRes=await supabase.from('finance_categories').select('id,name,category_type').eq('user_id',sessionUser.id).order('name');
- if(!catRes.error)financeCategories=catRes.data||[];
+ if(!catRes.error){financeCategories=catRes.data||[];$('transactionCategoryFilter').innerHTML='<option value="">All categories</option><option value="__uncategorised">Uncategorised</option>'+financeCategories.map(c=>'<option value="'+c.id+'">'+escapeHtml(c.name)+'</option>').join('');}
  await Promise.all([renderSubscriptions(),renderAIBudget()]);
 }
 function monthlyEquivalent(item){const n=Number(item.amount)||0;return n*({weekly:52/12,fortnightly:26/12,monthly:1,quarterly:1/3,yearly:1/12}[item.frequency]||1);}
@@ -295,12 +296,12 @@ async function renderSubscriptions(){
  $('subscriptionsList').querySelectorAll('[data-sub-cancel]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_recurring_items').update({status:'cancelled'}).eq('id',b.dataset.subCancel).eq('user_id',sessionUser.id);if(q.error)showMessage('message',q.error.message,'error');else await renderSubscriptions();}));
 }
 let activeViewUserId;
-async function setView(user){const nextUserId=user?.id||null;if(nextUserId===activeViewUserId)return;activeViewUserId=nextUserId;sessionUser=user; $('authView').classList.toggle('hidden',!!user);$('appView').classList.toggle('hidden',!user);if(!user)return;$('userLabel').textContent=user.email||'Signed in';$('userId').textContent=user.id;await loadData();await loadPlanningFeatures();}
+async function setView(user){const nextUserId=user?.id||null;if(nextUserId===activeViewUserId)return;activeViewUserId=nextUserId;sessionUser=user; $('authView').classList.toggle('hidden',!!user);$('appView').classList.toggle('hidden',!user);if(!user)return;$('userLabel').textContent=user.email||'Signed in';$('userId').textContent=user.id;await loadPlanningFeatures();await loadData();}
 async function loadData(){
  clearMessage('message');
  const [ar,tr,latestResult,cr]=await Promise.all([
   supabase.from('finance_accounts').select('id,name,institution,account_type,currency_code,current_balance,available_balance,balance_as_at,is_active').eq('user_id',sessionUser.id).eq('is_active',true).order('name'),
-  supabase.from('finance_transactions').select('id,account_id,transaction_date,description,merchant_name,amount,currency_code,is_pending').eq('user_id',sessionUser.id).order('transaction_date',{ascending:false}).limit(100),
+  supabase.from('finance_transactions').select('id,account_id,transaction_date,description,merchant_name,amount,currency_code,is_pending,category_id').eq('user_id',sessionUser.id).order('transaction_date',{ascending:false}).limit(100),
   supabase.from('finance_transactions').select('transaction_date').eq('user_id',sessionUser.id).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1).maybeSingle(),
   supabase.from('finance_connections').select('last_synced_at,connection_status').eq('user_id',sessionUser.id).eq('provider','akahu').maybeSingle()
  ]);
@@ -323,7 +324,7 @@ async function loadData(){
  $('moneyOut').textContent=money(Math.abs(countedMonthTx.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Number(t.amount),0)));
  $('accountCount').textContent=accounts.length+' account'+(accounts.length===1?'':'s');
  $('accountsList').innerHTML=accounts.length?accounts.map(a=>{const credit=isCreditAccount(a),available=a.available_balance!==null&&a.available_balance!==undefined;return '<div class="item"><div><div class="item-name">'+escapeHtml(a.name)+'</div><div class="sub">'+escapeHtml(a.institution||'Bank')+' · '+escapeHtml(a.account_type||'Account')+' · '+(credit?'Balance owed / current balance: '+money(a.current_balance):'Current balance: '+money(a.current_balance))+'</div></div><div style="text-align:right"><div class="amount">'+(credit?(available?money(a.available_balance):'Not supplied'):money(ownAvailable(a)))+'</div><div class="sub">'+(credit?'Available credit':'Own funds available · overdraft excluded')+'</div></div></div>';}).join():'<div class="empty">No accounts synced yet. Sync will import connected accounts.</div>';
- $('transactionsList').innerHTML=tx.length?tx.slice(0,visibleTransactionCount).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+(t.is_pending?' · Pending':'')+'</div></div><div class="amount '+(Number(t.amount)>=0?'positive':'negative')+'">'+(Number(t.amount)>0?'+':'−')+money(Math.abs(Number(t.amount)))+'</div></div>').join():'<div class="empty">No transactions yet. Your imported transactions will appear here.</div>';
+ $('transactionsList').innerHTML=tx.length?tx.slice(0,visibleTransactionCount).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+' · '+escapeHtml(financeCategories.find(c=>c.id===t.category_id)?.name||'Uncategorised')+(t.is_pending?' · Pending':'')+'</div></div><div class="amount '+(Number(t.amount)>=0?'positive':'negative')+'">'+(Number(t.amount)>0?'+':'−')+money(Math.abs(Number(t.amount)))+'</div></div>').join():'<div class="empty">No transactions yet. Your imported transactions will appear here.</div>';
  $('transactionsMore').classList.toggle('hidden',tx.length<=visibleTransactionCount);
  $('transactionsMore').textContent='Show 4 more';
  $('lastSynced').textContent=cr.data?.last_synced_at?'Last synced '+new Date(cr.data.last_synced_at).toLocaleString('en-NZ'):'Not synced yet';
