@@ -128,7 +128,7 @@ button{min-height:44px}
 </div>
 <div id="appView" class="shell hidden">
   <header class="top"><div class="brand"><div class="logo">A</div><div><div class="eyebrow">Private finance</div><h1>Accounts</h1></div></div><div style="display:flex;align-items:center;gap:12px"><small id="userLabel"></small><button class="secondary small-button" id="signOutButton">Sign out</button></div></header>
-  <nav class="actions" style="margin:0 0 22px"><button class="secondary small-button" id="dashboardTabButton" type="button">Dashboard</button><button class="secondary small-button" id="aiBudgetTabButton" type="button">AI Budget</button><button class="secondary small-button" id="archiveTabButton" type="button">Report archive</button></nav><div id="dashboardTab"><section class="hero"><div><div class="eyebrow">Your money, in one place</div><h2>Financial overview</h2><p>New Zealand dollars · Private to your account</p></div><div class="actions"><button class="secondary" id="downloadReportButton" type="button">↓ Download monthly report (PDF)</button><button id="syncButton">↻ Sync Kiwibank</button></div></section>
+  <nav class="actions" style="margin:0 0 22px"><button class="secondary small-button" id="dashboardTabButton" type="button">Dashboard</button><button class="secondary small-button" id="transactionsTabButton" type="button">Transactions</button><button class="secondary small-button" id="aiBudgetTabButton" type="button">AI Budget</button><button class="secondary small-button" id="archiveTabButton" type="button">Report archive</button></nav><div id="dashboardTab"><section class="hero"><div><div class="eyebrow">Your money, in one place</div><h2>Financial overview</h2><p>New Zealand dollars · Private to your account</p></div><div class="actions"><button class="secondary" id="downloadReportButton" type="button">↓ Download monthly report (PDF)</button><button id="syncButton">↻ Sync Kiwibank</button></div></section>
   <div id="message" class="notice hidden"></div>
   <section class="grid">
     <article class="card"><div class="metric-label">Available to spend</div><div class="metric" id="totalBalance">—</div><div class="metric-note" id="availableBalanceNote">Bank funds plus available credit where supplied</div></article>
@@ -149,6 +149,10 @@ button{min-height:44px}
   <section class="section"><div class="card"><div class="section-head"><h3>Setup status</h3><span class="pill">Secure connection</span></div><p class="sub">Your user ID is shown here so the account can be allow-listed for bank sync. This is not a password or token.</p><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><code id="userId" style="overflow-wrap:anywhere;color:#c7d9e8"></code><button id="copyUserId" class="secondary small-button">Copy user ID</button></div><p class="sub" style="margin-bottom:0">If syncing reports that access is not configured, add this ID as the value of the Supabase Edge Function secret <code>FINANCE_ALLOWED_USER_ID</code>. Keep all Akahu tokens in Supabase secrets.</p></div></section>
   <div class="footer">Accounts · Personal finance dashboard · Currency values shown in NZD where available.</div>
   </div>
+  <section id="transactionsTab" class="hidden">
+    <section class="hero"><div><div class="eyebrow">Every bank record</div><h2>Transactions</h2><p>Review categories and change any transaction. Your corrections are saved to your account.</p></div></section>
+    <div class="card"><div class="feature-form"><input id="transactionSearch" placeholder="Search merchant or description"><select id="transactionCategoryFilter"><option value="">All categories</option><option value="__uncategorised">Uncategorised</option></select></div><div class="sub" id="transactionCount" style="margin-bottom:12px">Loading transactions…</div><div id="allTransactionsList" class="list"><div class="empty">Loading transactions…</div></div><div class="actions" style="justify-content:space-between;margin-top:16px"><button class="secondary small-button" id="transactionPrev" type="button">← Previous</button><span class="sub" id="transactionPageLabel" style="align-self:center">Page 1</span><button class="secondary small-button" id="transactionNext" type="button">Next →</button></div></div>
+  </section>
   <section id="aiBudgetTab" class="hidden">
     <section class="hero"><div><div class="eyebrow">Personalised spending plan</div><h2>AI Budget</h2><p>Recommendations based on your imported income, transactions and recurring payments.</p></div><div class="actions"><button class="secondary" id="refreshAIBudgetButton" type="button">↻ Refresh analysis</button></div></section>
     <div class="notice" id="aiBudgetStatus">Analysing your recent financial activity…</div>
@@ -200,6 +204,28 @@ function inferredCategory(t){
  for(const [pattern,name] of expenseRules)if(pattern.test(label))return name;
  return 'Other';
 }
+async function renderTransactionsPage(){
+ const host=$('allTransactionsList');
+ host.innerHTML='<div class="empty">Loading transactions…</div>';
+ const selected=$('transactionCategoryFilter').value;
+ const query=$('transactionSearch').value.trim();
+ let q=supabase.from('finance_transactions').select('id,transaction_date,description,merchant_name,amount,currency_code,transaction_type,is_pending,category_id',{count:'exact'}).eq('user_id',sessionUser.id).order('transaction_date',{ascending:false}).order('created_at',{ascending:false});
+ if(selected==='__uncategorised')q=q.is('category_id',null);else if(selected)q=q.eq('category_id',selected);
+ if(query)q=q.ilike('merchant_name','%'+query.replace(/[%]/g,'')+'%');
+ const from=transactionPage*transactionPageSize;
+ const r=await q.range(from,from+transactionPageSize-1);
+ if(r.error){host.innerHTML='<div class="feature-empty">Could not load transactions: '+escapeHtml(r.error.message)+'</div>';return;}
+ const rows=r.data||[],total=r.count||0,pages=Math.max(1,Math.ceil(total/transactionPageSize));
+ if(transactionPage>=pages){transactionPage=pages-1;return renderTransactionsPage();}
+ $('transactionCount').textContent=total.toLocaleString('en-NZ')+' transaction'+(total===1?'':'s')+(query?' matching "'+query+'"':'')+(selected&&selected!=='__uncategorised'?' in '+(financeCategories.find(c=>c.id===selected)?.name||'selected category'):'');
+ $('transactionPageLabel').textContent='Page '+(transactionPage+1)+' of '+pages;
+ $('transactionPrev').disabled=transactionPage===0;
+ $('transactionNext').disabled=transactionPage>=pages-1;
+ const opts=financeCategories.map(c=>'<option value="'+c.id+'">'+escapeHtml(c.name)+'</option>').join('');
+ host.innerHTML=rows.length?rows.map(t=>'<div class="item" style="align-items:center;flex-wrap:wrap"><div style="min-width:0;flex:1 1 58%"><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+' · '+escapeHtml(t.transaction_type||'')+(t.is_pending?' · Pending':'')+(t.description&&t.merchant_name?' · '+escapeHtml(t.description):'')+'</div></div><div style="text-align:right"><div class="amount '+(Number(t.amount)>=0?'positive':'negative')+'">'+(Number(t.amount)>0?'+':'−')+money(Math.abs(Number(t.amount)))+'</div></div><div style="flex:1 1 100%;display:flex;align-items:center;gap:8px"><label class="sub" for="category-'+t.id+'">Category</label><select id="category-'+t.id+'" data-transaction-category="'+t.id+'" style="flex:1;min-width:0;padding:9px;border:1px solid #354759;border-radius:9px;background:#0b131c;color:var(--text)"><option value="">Uncategorised</option>'+opts+'</select></div></div>').join(''):'<div class="empty">No transactions match these filters.</div>';
+ host.querySelectorAll('[data-transaction-category]').forEach(sel=>{const row=rows.find(t=>t.id===sel.dataset.transactionCategory);sel.value=row?.category_id||'';sel.addEventListener('change',async()=>{sel.disabled=true;const result=await supabase.from('finance_transactions').update({category_id:sel.value||null}).eq('id',sel.dataset.transactionCategory).eq('user_id',sessionUser.id).select('id').maybeSingle();if(result.error||!result.data){showMessage('message','Could not save category change: '+(result.error?.message||'No transaction was updated.'),'error');sel.value=row?.category_id||'';}else{row.category_id=sel.value||null;showMessage('message','Transaction category saved.','success');}sel.disabled=false;});});
+}
+
 async function renderAIBudget(){
  const host=$('aiCategoryLimits'),actions=$('aiSavingsActions');
  host.innerHTML='<div class="feature-empty">Loading your saved monthly limits…</div>';actions.innerHTML='<div class="feature-empty">Reviewing recent spending…</div>';
@@ -248,8 +274,11 @@ async function renderAIBudget(){
 
 const defaultCategories = ['Housing','Groceries','Transport','Utilities','Entertainment','Dining out','Shopping','Health','Insurance','Subscriptions','Personal care','Other'];
 let financeCategories=[];
+let transactionPage=0;
+const transactionPageSize=50;
+let transactionSearchTimer=null;
 async function loadPlanningFeatures(){
- const catRes=await supabase.from('finance_categories').select('id,name,category_type').eq('user_id',sessionUser.id).eq('category_type','expense').order('name');
+ const catRes=await supabase.from('finance_categories').select('id,name,category_type').eq('user_id',sessionUser.id).order('name');
  if(!catRes.error)financeCategories=catRes.data||[];
  await Promise.all([renderSubscriptions(),renderAIBudget()]);
 }
@@ -355,8 +384,13 @@ async function renderReportArchive(){
  host.querySelectorAll('[data-archive-open]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_monthly_reports').select('report_html').eq('id',b.dataset.archiveOpen).eq('user_id',sessionUser.id).single();if(q.error){showMessage('message','Could not open archived report: '+q.error.message,'error');return;}const w=window.open('','_blank');if(!w){showMessage('message','Pop-up blocked. Allow pop-ups for this site and try again.','error');return;}w.document.open();w.document.write(q.data.report_html);w.document.close();w.focus();}));
 }
 $('dashboardTabButton').classList.add('active');
-function showTab(tab){$('dashboardTab').classList.toggle('hidden',tab!=='dashboard');$('aiBudgetTab').classList.toggle('hidden',tab!=='budget');$('archiveTab').classList.toggle('hidden',tab!=='archive');$('dashboardTabButton').classList.toggle('active',tab==='dashboard');$('aiBudgetTabButton').classList.toggle('active',tab==='budget');$('archiveTabButton').classList.toggle('active',tab==='archive');}
+function showTab(tab){$('dashboardTab').classList.toggle('hidden',tab!=='dashboard');$('transactionsTab').classList.toggle('hidden',tab!=='transactions');$('aiBudgetTab').classList.toggle('hidden',tab!=='budget');$('archiveTab').classList.toggle('hidden',tab!=='archive');$('dashboardTabButton').classList.toggle('active',tab==='dashboard');$('transactionsTabButton').classList.toggle('active',tab==='transactions');$('aiBudgetTabButton').classList.toggle('active',tab==='budget');$('archiveTabButton').classList.toggle('active',tab==='archive');}
 $('dashboardTabButton').addEventListener('click',()=>showTab('dashboard'));
+$('transactionsTabButton').addEventListener('click',async()=>{showTab('transactions');transactionPage=0;await renderTransactionsPage();});
+$('transactionCategoryFilter').addEventListener('change',()=>{transactionPage=0;renderTransactionsPage();});
+$('transactionSearch').addEventListener('input',()=>{clearTimeout(transactionSearchTimer);transactionSearchTimer=setTimeout(()=>{transactionPage=0;renderTransactionsPage();},250);});
+$('transactionPrev').addEventListener('click',()=>{if(transactionPage>0){transactionPage--;renderTransactionsPage();}});
+$('transactionNext').addEventListener('click',()=>{transactionPage++;renderTransactionsPage();});
 $('aiBudgetTabButton').addEventListener('click',async()=>{showTab('budget');await renderAIBudget();});
 $('refreshAIBudgetButton').addEventListener('click',renderAIBudget);
 $('archiveTabButton').addEventListener('click',async()=>{showTab('archive');await renderReportArchive();});
