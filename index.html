@@ -184,7 +184,7 @@ const money = n => new Intl.NumberFormat('en-NZ',{style:'currency',currency:'NZD
 function showMessage(id, text, type='') { const el=$(id); el.textContent=text; el.className='notice'+(type?' '+type:''); el.classList.remove('hidden'); }
 function clearMessage(id){$(id).classList.add('hidden')}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function dateLabel(s){if(!s)return '';const m=String(s).match(/^(\\d{4})-(\\d{2})-(\\d{2})/);return m?new Intl.DateTimeFormat('en-NZ',{day:'numeric',month:'short',timeZone:'Pacific/Auckland'}).format(new Date(Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),12))):'';}
+function dateLabel(s){if(!s)return '';const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Intl.DateTimeFormat('en-NZ',{day:'numeric',month:'short',timeZone:'Pacific/Auckland'}).format(new Date(Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),12))):'';}
 function monthRange(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Pacific/Auckland',year:'numeric',month:'2-digit'}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));const year=Number(p.year),month=Number(p.month);const nextYear=month===12?year+1:year;const nextMonth=month===12?1:month+1;return {start:year+'-'+String(month).padStart(2,'0')+'-01',end:nextYear+'-'+String(nextMonth).padStart(2,'0')+'-01'};}
 
 
@@ -233,7 +233,7 @@ async function fetchAllTransactions(buildQuery){
  return all;
 }
 function selectedBreakdownMonth(){
- const el=$('breakdownMonth');if(el?.value&&/^\\d{4}-\\d{2}$/.test(el.value))return el.value;
+ const el=$('breakdownMonth');if(el?.value&&/^\d{4}-\d{2}$/.test(el.value))return el.value;
  return monthRange().start.slice(0,7);
 }
 function monthBounds(month){const [y,m]=month.split('-').map(Number);const nextY=m===12?y+1:y,nextM=m===12?1:m+1;return {start:month+'-01',end:nextY+'-'+String(nextM).padStart(2,'0')+'-01'};}
@@ -402,7 +402,8 @@ $('transactionSearch').addEventListener('input',()=>{clearTimeout(transactionSea
 $('transactionPrev').addEventListener('click',()=>{if(transactionPage>0){transactionPage--;renderTransactionsPage();}});
 $('transactionNext').addEventListener('click',()=>{transactionPage++;renderTransactionsPage();});
 $('aiBudgetTabButton').addEventListener('click',async()=>{showTab('budget');await renderAIBudget();});
-$('refreshAIBudgetButton').addEventListener('click',renderAIBudget);\n$('breakdownMonth').value=monthRange().start.slice(0,7);$('breakdownMonth').addEventListener('change',renderAIBudget);
+$('refreshAIBudgetButton').addEventListener('click',renderAIBudget);
+$('breakdownMonth').value=monthRange().start.slice(0,7);$('breakdownMonth').addEventListener('change',renderAIBudget);
 $('archiveTabButton').addEventListener('click',async()=>{showTab('archive');await renderReportArchive();});
 $('refreshArchiveButton').addEventListener('click',renderReportArchive);
 
