@@ -79,7 +79,7 @@ button{min-height:44px}
     border-top:1px solid #263443;display:grid;grid-template-columns:1fr 1fr;
     gap:10px;box-shadow:0 -10px 30px rgba(0,0,0,.22)
   }
-  #appView>nav.actions button{min-height:46px;border-radius:13px;font-size:13px}
+  #appView>nav.actions button{min-height:46px;border-radius:13px;font-size:12px;padding:8px 6px}
   #appView>nav.actions button:not(.active){background:#182532}
   #appView>nav.actions button.active{background:var(--green);color:#09241d;border-color:transparent}
   .top{margin-bottom:18px}
@@ -128,7 +128,7 @@ button{min-height:44px}
 </div>
 <div id="appView" class="shell hidden">
   <header class="top"><div class="brand"><div class="logo">A</div><div><div class="eyebrow">Private finance</div><h1>Accounts</h1></div></div><div style="display:flex;align-items:center;gap:12px"><small id="userLabel"></small><button class="secondary small-button" id="signOutButton">Sign out</button></div></header>
-  <nav class="actions" style="margin:0 0 22px"><button class="secondary small-button" id="dashboardTabButton" type="button">Dashboard</button><button class="secondary small-button" id="archiveTabButton" type="button">Report archive</button></nav><div id="dashboardTab"><section class="hero"><div><div class="eyebrow">Your money, in one place</div><h2>Financial overview</h2><p>New Zealand dollars · Private to your account</p></div><div class="actions"><button class="secondary" id="downloadReportButton" type="button">↓ Download monthly report (PDF)</button><button id="syncButton">↻ Sync Kiwibank</button></div></section>
+  <nav class="actions" style="margin:0 0 22px"><button class="secondary small-button" id="dashboardTabButton" type="button">Dashboard</button><button class="secondary small-button" id="aiBudgetTabButton" type="button">AI Budget</button><button class="secondary small-button" id="archiveTabButton" type="button">Report archive</button></nav><div id="dashboardTab"><section class="hero"><div><div class="eyebrow">Your money, in one place</div><h2>Financial overview</h2><p>New Zealand dollars · Private to your account</p></div><div class="actions"><button class="secondary" id="downloadReportButton" type="button">↓ Download monthly report (PDF)</button><button id="syncButton">↻ Sync Kiwibank</button></div></section>
   <div id="message" class="notice hidden"></div>
   <section class="grid">
     <article class="card"><div class="metric-label">Available to spend</div><div class="metric" id="totalBalance">—</div><div class="metric-note" id="availableBalanceNote">Bank funds plus available credit where supplied</div></article>
@@ -136,16 +136,6 @@ button{min-height:44px}
     <article class="card"><div class="metric-label" id="moneyOutLabel">Money out · this month</div><div class="metric negative" id="moneyOut">—</div><div class="metric-note" id="moneyOutNote">Settled transactions for the current month</div></article>
   </section>
 
-  <section class="section"><div class="section-head"><h3>Your income-based monthly plan</h3><span class="pill">Auto-calculated</span></div><div class="card">
-    <div class="grid plan-metrics">
-      <div><div class="metric-label">Expected monthly income</div><div class="metric positive" id="planIncome">—</div><div class="metric-note">Salary + household rent contribution</div></div>
-      <div><div class="metric-label">Estimated monthly spending</div><div class="metric" id="planSpending">—</div><div class="metric-note">Based on imported settled transactions</div></div>
-      <div><div class="metric-label">Available after spending</div><div class="metric" id="planRemainder">—</div><div class="metric-note">Potential savings / buffer</div></div>
-    </div>
-    <div class="sub" id="planIncomeDetail" style="margin:12px 0">Recognising recurring income…</div>
-    <div id="planAllocations" class="list"><div class="feature-empty">Building your plan…</div></div>
-    <div class="notice" style="margin-top:12px">This is a suggested starting plan, not a bank instruction. Transfers between your own accounts are excluded. Categories are estimated from transaction descriptions and can be refined.</div>
-  </div></section>
   <section class="section"><div class="section-head"><h3>Bank accounts</h3><span class="pill" id="accountCount">0 accounts</span></div><div class="card"><div id="accountsList" class="list"><div class="empty">No accounts synced yet. Use “Sync Kiwibank” after setup.</div></div></div></section>
   <section class="section"><div class="section-head"><h3>Recent transactions</h3><span class="sync-time" id="lastSynced"></span></div><div class="card"><div id="transactionsList" class="list"><div class="empty">Your recent transactions will appear here after your first sync.</div></div><div style="display:flex;justify-content:center;margin-top:14px"><button id="transactionsMore" class="secondary small-button hidden" type="button">Show more</button></div></div></section>
 
@@ -156,15 +146,21 @@ button{min-height:44px}
     <div class="item" style="border-top:1px solid var(--line);margin-top:10px"><div><div class="item-name">Estimated monthly subscriptions</div><div class="sub">Normalised across billing frequencies</div></div><div class="amount" id="subscriptionMonthly">$0.00</div></div>
     <div class="item"><div><div class="item-name">Estimated annual subscriptions</div></div><div class="amount" id="subscriptionAnnual">$0.00</div></div>
   </div></section>
-  <section class="section"><div class="section-head"><h3>Monthly budgets</h3><span class="pill" id="budgetSummary">0 budgets</span></div><div class="card">
-    <div class="feature-form"><select id="budgetCategory" aria-label="Budget category"></select><input id="budgetAmount" type="number" min="0.01" step="0.01" placeholder="Monthly limit NZD"><button id="addBudget" type="button">Set budget</button></div>
-    <div class="sub" style="margin-bottom:12px">Spending is calculated from settled transactions assigned to each category. Transactions not yet categorised will not be included.</div>
-    <div id="budgetsList" class="list"><div class="feature-empty">Loading budgets…</div></div>
-  </div></section>
-
   <section class="section"><div class="card"><div class="section-head"><h3>Setup status</h3><span class="pill">Secure connection</span></div><p class="sub">Your user ID is shown here so the account can be allow-listed for bank sync. This is not a password or token.</p><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><code id="userId" style="overflow-wrap:anywhere;color:#c7d9e8"></code><button id="copyUserId" class="secondary small-button">Copy user ID</button></div><p class="sub" style="margin-bottom:0">If syncing reports that access is not configured, add this ID as the value of the Supabase Edge Function secret <code>FINANCE_ALLOWED_USER_ID</code>. Keep all Akahu tokens in Supabase secrets.</p></div></section>
   <div class="footer">Accounts · Personal finance dashboard · Currency values shown in NZD where available.</div>
   </div>
+  <section id="aiBudgetTab" class="hidden">
+    <section class="hero"><div><div class="eyebrow">Personalised spending plan</div><h2>AI Budget</h2><p>Recommendations based on your imported income, transactions and recurring payments.</p></div><div class="actions"><button class="secondary" id="refreshAIBudgetButton" type="button">↻ Refresh analysis</button></div></section>
+    <div class="notice" id="aiBudgetStatus">Analysing your recent financial activity…</div>
+    <section class="grid" style="margin-top:14px">
+      <article class="card"><div class="metric-label">Safe-to-spend · monthly</div><div class="metric positive" id="aiSafeMonthly">—</div><div class="metric-note" id="aiSafeWeekly">Weekly allowance: —</div></article>
+      <article class="card"><div class="metric-label">Savings target · monthly</div><div class="metric" id="aiSavingsTarget">—</div><div class="metric-note">Suggested 15% of recognised household income</div></article>
+      <article class="card"><div class="metric-label">Recognised monthly income</div><div class="metric" id="aiMonthlyIncome">—</div><div class="metric-note" id="aiIncomeDetail">Based on recurring fortnightly income</div></article>
+    </section>
+    <section class="section"><div class="section-head"><h3>Safe-to-Spend breakdown</h3><span class="pill">Monthly limits</span></div><div class="card"><p class="sub">Suggested category ceilings are scaled from your last 90 days of settled spending. They add up to the recommended spending allowance, not your bank balance.</p><div id="aiCategoryLimits" class="list"><div class="feature-empty">Building your category limits…</div></div></div></section>
+    <section class="section"><div class="section-head"><h3>Savings Plan</h3><span class="pill">Actionable opportunities</span></div><div class="card"><div id="aiSavingsActions" class="list"><div class="feature-empty">Looking for practical savings opportunities…</div></div></div></section>
+    <section class="section"><div class="card"><div class="section-head"><h3>How this budget is calculated</h3><span class="pill">Transparent estimates</span></div><div class="sub">Uses your signed-in Account Dashboard data: recognised Rothbury salary and partner rent contribution, settled transaction history, and active recurring subscriptions. Transfers between your own accounts and P W MILLER transactions are excluded. The analysis is generated locally in the dashboard using transparent budgeting rules; it does not send your financial data to an external AI service.</div><div class="sub" id="aiBudgetUpdated" style="margin-top:10px"></div></div></section>
+  </section>
   <section id="archiveTab" class="hidden">
     <section class="hero"><div><div class="eyebrow">Your monthly reports</div><h2>Report archive</h2><p>Saved monthly snapshots, available to reopen or download as PDF.</p></div><div class="actions"><button class="secondary" id="refreshArchiveButton" type="button">↻ Refresh archive</button></div></section>
     <div class="notice">Reports are stored privately against your signed-in account. Use “Download monthly report” on the dashboard to generate and save a report snapshot.</div>
@@ -204,51 +200,49 @@ function inferredCategory(t){
  for(const [pattern,name] of expenseRules)if(pattern.test(label))return name;
  return 'Other';
 }
-async function renderIncomePlan(){
+async function renderAIBudget(){
+ const host=$('aiCategoryLimits'),actions=$('aiSavingsActions');
+ host.innerHTML='<div class="feature-empty">Analysing your last 90 days…</div>';actions.innerHTML='<div class="feature-empty">Finding savings opportunities…</div>';
  const since=new Date(Date.now()-90*86400000).toISOString().slice(0,10);
- const r=await supabase.from('finance_transactions').select('transaction_date,description,merchant_name,amount,transaction_type,is_pending').eq('user_id',sessionUser.id).gte('transaction_date',since).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1000);
- if(r.error){$('planAllocations').innerHTML='<div class="feature-empty">Could not calculate the plan: '+escapeHtml(r.error.message)+'</div>';return;}
- const rows=r.data||[];
+ const [txRes,subRes]=await Promise.all([
+  supabase.from('finance_transactions').select('transaction_date,description,merchant_name,amount,transaction_type,is_pending').eq('user_id',sessionUser.id).gte('transaction_date',since).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1500),
+  supabase.from('finance_recurring_items').select('name,amount,frequency,status,item_type').eq('user_id',sessionUser.id).eq('status','active')
+ ]);
+ if(txRes.error){$('aiBudgetStatus').className='notice error';$('aiBudgetStatus').textContent='Could not analyse transactions: '+txRes.error.message;host.innerHTML='';actions.innerHTML='';return;}
+ const rows=txRes.data||[];
  const isTransfer=t=>String(t.transaction_type||'').toUpperCase()==='TRANSFER'||/\bTRANSFER\b|\bTRF\b|P W MILLER/i.test((t.description||'')+' '+(t.merchant_name||''));
  const salary=rows.filter(t=>Number(t.amount)>0&&!isTransfer(t)&&/SALARY\s+ROTHBURY|ROTHBURY\s+LTD/i.test((t.description||'')+' '+(t.merchant_name||'')));
  const rent=rows.filter(t=>Number(t.amount)>0&&!isTransfer(t)&&/AUTOMATIC PAYMENT RENT/i.test((t.description||'')+' '+(t.merchant_name||'')));
- const salaryPay=salary.length?Math.max(...salary.map(t=>Number(t.amount))):0;
- const rentPay=rent.length?Math.max(...rent.map(t=>Number(t.amount))):0;
- const monthlyIncome=(salaryPay+rentPay)*26/12;
- const expenseRows=rows.filter(t=>Number(t.amount)<0&&!isTransfer(t)&&!/[Pp] W MILLER/i.test((t.description||'')+' '+(t.merchant_name||'')));
- const grouped={};
- expenseRows.forEach(t=>{const cat=inferredCategory(t);grouped[cat]=(grouped[cat]||0)+Math.abs(Number(t.amount)||0);});
+ const salaryPay=salary.length?Math.max(...salary.map(t=>Number(t.amount))):0,rentPay=rent.length?Math.max(...rent.map(t=>Number(t.amount))):0;
+ const monthlyIncome=(salaryPay+rentPay)*26/12,expenses=rows.filter(t=>Number(t.amount)<0&&!isTransfer(t));
  const dates=rows.map(t=>new Date(t.transaction_date+'T12:00:00').getTime()).filter(Number.isFinite);
- const observedDays=dates.length?Math.max(30,Math.min(90,(Math.max(...dates)-Math.min(...dates))/86400000+1)):90;
- const scale=30.4375/observedDays;
- const allocations=Object.entries(grouped).map(([name,total])=>({name,amount:total*scale})).sort((a,b)=>b.amount-a.amount);
- const monthlySpend=allocations.reduce((s,x)=>s+x.amount,0);
- const remainder=monthlyIncome-monthlySpend;
- $('planIncome').textContent=money(monthlyIncome);
- $('planSpending').textContent=money(monthlySpend);
- $('planRemainder').textContent=money(remainder);
- $('planRemainder').className='metric '+(remainder>=0?'positive':'negative');
- $('planIncomeDetail').textContent=(salary.length?'Salary: '+money(salaryPay)+' fortnightly':'Salary not detected')+' · '+(rent.length?'Partner rent: '+money(rentPay)+' fortnightly':'Partner rent not detected')+' · Transfers excluded';
- const entries=allocations.map(x=>'<div class="item"><div><div class="item-name">'+escapeHtml(x.name)+'</div><div class="sub">Estimated monthly allocation from recent spending</div></div><div class="amount">'+money(x.amount)+'</div></div>');
- if(remainder>0)entries.push('<div class="item"><div><div class="item-name">Potential savings / buffer</div><div class="sub">Income remaining after estimated spending</div></div><div class="amount positive">'+money(remainder)+'</div></div>');
- else entries.push('<div class="item"><div><div class="item-name">Budget gap</div><div class="sub">Spending estimate is above recognised income</div></div><div class="amount negative">'+money(Math.abs(remainder))+'</div></div>');
- $('planAllocations').innerHTML=entries.length?entries.join(''):'<div class="feature-empty">Not enough transaction history yet to suggest spending allocations.</div>';
+ const observedDays=dates.length?Math.max(30,Math.min(90,(Math.max(...dates)-Math.min(...dates))/86400000+1)):90,scale=30.4375/observedDays,grouped={};
+ expenses.forEach(t=>{const cat=inferredCategory(t);grouped[cat]=(grouped[cat]||0)+Math.abs(Number(t.amount)||0);});
+ const spend=Object.entries(grouped).map(([name,total])=>({name,monthly:total*scale})).sort((x,y)=>y.monthly-x.monthly);
+ const historicalMonthly=spend.reduce((n,x)=>n+x.monthly,0),savingsTarget=monthlyIncome*.15,safeMonthly=Math.max(0,monthlyIncome-savingsTarget);
+ const scaleFactor=historicalMonthly>0?Math.min(1,safeMonthly/historicalMonthly):0,categoryLimits=spend.map(x=>({...x,limit:x.monthly*scaleFactor}));
+ const activeSubs=(subRes.data||[]).filter(x=>x.item_type==='subscription'),subMonthly=activeSubs.reduce((n,x)=>n+monthlyEquivalent(x),0);
+ $('aiSafeMonthly').textContent=money(safeMonthly);$('aiSafeWeekly').textContent='Weekly allowance: '+money(safeMonthly/4.345);
+ $('aiSavingsTarget').textContent=money(savingsTarget);$('aiMonthlyIncome').textContent=money(monthlyIncome);
+ $('aiIncomeDetail').textContent=(salary.length?'Rothbury salary '+money(salaryPay)+' / fortnight':'Salary not detected')+' · '+(rent.length?'Partner rent '+money(rentPay)+' / fortnight':'Partner rent not detected');
+ $('aiBudgetStatus').className='notice '+(rows.length?'success':'');
+ $('aiBudgetStatus').textContent=rows.length?'Analysis uses '+rows.length+' settled transactions across approximately '+Math.round(observedDays)+' days. '+(historicalMonthly>safeMonthly?'Historical spending is above the recommended safe-to-spend limit by '+money(historicalMonthly-safeMonthly)+'.':'Recent spending is within the suggested spending allowance.'):'No settled transactions were found in the last 90 days. Sync your bank accounts to build a reliable budget.';
+ host.innerHTML=categoryLimits.length?categoryLimits.map(x=>'<div class="item" style="display:block"><div style="display:flex;justify-content:space-between;gap:12px"><div><div class="item-name">'+escapeHtml(x.name)+'</div><div class="sub">Recent monthly average '+money(x.monthly)+'</div></div><div class="amount">'+money(x.limit)+'</div></div><div class="progress"><span style="width:'+Math.min(100,safeMonthly?x.limit/safeMonthly*100:0)+'%"></span></div><div class="sub" style="margin-top:5px">Recommended monthly limit</div></div>').join(''):'<div class="feature-empty">Not enough transaction history to calculate category limits yet.</div>';
+ const discretionary=new Set(['Entertainment','Dining out','Shopping','Subscriptions','Personal care','Other']);
+ const opportunities=spend.filter(x=>x.monthly>=20).map(x=>({name:x.name,current:x.monthly,rate:discretionary.has(x.name)?0.15:0.05,saving:x.monthly*(discretionary.has(x.name)?0.15:0.05),tip:discretionary.has(x.name)?'Set a weekly cap and reduce impulse or convenience purchases.':'Compare providers, plans or usage before reducing this essential category.'})).sort((x,y)=>y.saving-x.saving).slice(0,4);
+ const insights=opportunities.map(x=>'<div class="item"><div><div class="item-name">'+escapeHtml(x.name)+' · potential saving '+money(x.saving)+'/month</div><div class="sub">'+money(x.current)+' recent monthly average. '+escapeHtml(x.tip)+'</div></div><span class="amount positive">−'+Math.round(x.rate*100)+'%</span></div>');
+ if(activeSubs.length&&subMonthly>0)insights.push('<div class="item"><div><div class="item-name">Review recurring subscriptions · '+money(subMonthly)+'/month</div><div class="sub">'+activeSubs.length+' active subscription(s). Pause or cancel services you no longer use, and check for duplicate plans.</div></div><span class="amount positive">Review</span></div>');
+ const potential=opportunities.reduce((n,x)=>n+x.saving,0);if(potential>0)insights.unshift('<div class="notice success">A realistic first target is to free up around '+money(potential)+'/month from the largest adjustable spending areas. This is an estimate, not a guaranteed saving.</div>');
+ if(!insights.length)insights.push('<div class="feature-empty">More settled transaction history is needed before specific savings opportunities can be identified.</div>');
+ actions.innerHTML=insights.join('');$('aiBudgetUpdated').textContent='Analysis refreshed '+new Date().toLocaleString('en-NZ')+'. Income recognition uses the recurring fortnightly salary and partner rent patterns already used by your dashboard.';
 }
 
 const defaultCategories = ['Housing','Groceries','Transport','Utilities','Entertainment','Dining out','Shopping','Health','Insurance','Subscriptions','Personal care','Other'];
 let financeCategories=[];
 async function loadPlanningFeatures(){
-  const catRes=await supabase.from('finance_categories').select('id,name,category_type').eq('user_id',sessionUser.id).eq('category_type','expense').order('name');
-  if(catRes.error){showMessage('message','Could not load categories: '+catRes.error.message,'error');return;}
-  financeCategories=catRes.data||[];
-  if(!financeCategories.length){
-    const seed=defaultCategories.map(name=>({user_id:sessionUser.id,name,category_type:'expense',is_system:true}));
-    const ins=await supabase.from('finance_categories').insert(seed).select('id,name,category_type');
-    if(ins.error){showMessage('message','Could not prepare budget categories: '+ins.error.message,'error');return;}
-    financeCategories=ins.data||[];
-  }
-  $('budgetCategory').innerHTML=financeCategories.map(x=>'<option value="'+x.id+'">'+escapeHtml(x.name)+'</option>').join('');
-  await Promise.all([renderSubscriptions(),renderBudgets(),renderIncomePlan()]);
+ const catRes=await supabase.from('finance_categories').select('id,name,category_type').eq('user_id',sessionUser.id).eq('category_type','expense').order('name');
+ if(!catRes.error)financeCategories=catRes.data||[];
+ await Promise.all([renderSubscriptions(),renderAIBudget()]);
 }
 function monthlyEquivalent(item){const n=Number(item.amount)||0;return n*({weekly:52/12,fortnightly:26/12,monthly:1,quarterly:1/3,yearly:1/12}[item.frequency]||1);}
 async function renderSubscriptions(){
@@ -262,19 +256,6 @@ async function renderSubscriptions(){
  $('subscriptionsList').querySelectorAll('[data-sub-toggle]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_recurring_items').update({status:b.dataset.status}).eq('id',b.dataset.subToggle).eq('user_id',sessionUser.id);if(q.error)showMessage('message',q.error.message,'error');else await renderSubscriptions();}));
  $('subscriptionsList').querySelectorAll('[data-sub-cancel]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_recurring_items').update({status:'cancelled'}).eq('id',b.dataset.subCancel).eq('user_id',sessionUser.id);if(q.error)showMessage('message',q.error.message,'error');else await renderSubscriptions();}));
 }
-async function renderBudgets(){
- const r=await supabase.from('finance_budgets').select('id,name,amount,period,category_id').eq('user_id',sessionUser.id).eq('is_active',true).eq('period','monthly').order('name');
- if(r.error){$('budgetsList').innerHTML='<div class="feature-empty">Could not load budgets: '+escapeHtml(r.error.message)+'</div>';return;}
- const budgets=r.data||[];$('budgetSummary').textContent=budgets.length+' budgets';
- const now=new Date(),parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Pacific/Auckland',year:'numeric',month:'2-digit'}).formatToParts(now),p=Object.fromEntries(parts.map(z=>[z.type,z.value])),start=p.year+'-'+p.month+'-01',end=Number(p.month)===12?(Number(p.year)+1)+'-01-01':p.year+'-'+String(Number(p.month)+1).padStart(2,'0')+'-01';
- const tx=await supabase.from('finance_transactions').select('category_id,amount,description,merchant_name,transaction_type').eq('user_id',sessionUser.id).eq('is_pending',false).lt('amount',0).gte('transaction_date',start).lt('transaction_date',end);
- if(tx.error){$('budgetsList').innerHTML='<div class="feature-empty">Could not calculate spending: '+escapeHtml(tx.error.message)+'</div>';return;}
- $('budgetsList').innerHTML=budgets.length?budgets.map(b=>{const cat=financeCategories.find(x=>x.id===b.category_id),spent=Math.abs((tx.data||[]).filter(t=>t.category_id===b.category_id||(!t.category_id&&inferredCategory(t)===cat?.name)).reduce((s,t)=>s+Number(t.amount||0),0)),limit=Number(b.amount),pct=limit?spent/limit*100:0,remaining=limit-spent;return '<div class="item" style="display:block"><div style="display:flex;justify-content:space-between;gap:12px"><div><div class="item-name">'+escapeHtml(cat?.name||b.name)+'</div><div class="sub">'+money(spent)+' spent of '+money(limit)+'</div></div><div class="amount '+(remaining<0?'negative':'')+'">'+(remaining<0?money(Math.abs(remaining))+' over':money(remaining)+' left')+'</div></div><div class="progress '+(pct>100?'over':'')+'"><span style="width:'+Math.min(100,pct)+'%"></span></div><div class="sub" style="margin-top:6px">'+Math.round(pct)+'% used <button class="secondary small-button" style="float:right" data-budget-delete="'+b.id+'">Remove</button></div></div>';}).join(''):'<div class="feature-empty">No budgets set yet. Choose a category and set your first monthly limit.</div>';
- $('budgetsList').querySelectorAll('[data-budget-delete]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_budgets').update({is_active:false}).eq('id',b.dataset.budgetDelete).eq('user_id',sessionUser.id);if(q.error)showMessage('message',q.error.message,'error');else await renderBudgets();}));
-}
-$('addSubscription').addEventListener('click',async()=>{const name=$('subName').value.trim(),amount=Number($('subAmount').value),frequency=$('subFrequency').value,due=$('subDue').value;if(!name||!(amount>0)){showMessage('message','Enter a subscription name and a valid amount.','error');return;}const r=await supabase.from('finance_recurring_items').insert({user_id:sessionUser.id,name,merchant_name:name,amount,frequency,next_due_on:due||null,item_type:'subscription',status:'active',detection_source:'manual'});if(r.error){showMessage('message','Could not add subscription: '+r.error.message,'error');return;}$('subName').value='';$('subAmount').value='';$('subDue').value='';await renderSubscriptions();showMessage('message','Subscription added.','success');});
-$('addBudget').addEventListener('click',async()=>{const category_id=$('budgetCategory').value,amount=Number($('budgetAmount').value),cat=financeCategories.find(x=>x.id===category_id);if(!category_id||!(amount>0)){showMessage('message','Choose a category and enter a monthly limit greater than zero.','error');return;}const r=await supabase.from('finance_budgets').insert({user_id:sessionUser.id,category_id,name:cat?.name||'Budget',amount,period:'monthly',starts_on:new Date().toISOString().slice(0,10),is_active:true});if(r.error){showMessage('message','Could not save budget: '+r.error.message,'error');return;}$('budgetAmount').value='';await renderBudgets();showMessage('message','Monthly budget saved.','success');});
-
 let activeViewUserId;
 async function setView(user){const nextUserId=user?.id||null;if(nextUserId===activeViewUserId)return;activeViewUserId=nextUserId;sessionUser=user; $('authView').classList.toggle('hidden',!!user);$('appView').classList.toggle('hidden',!user);if(!user)return;$('userLabel').textContent=user.email||'Signed in';$('userId').textContent=user.id;await loadData();await loadPlanningFeatures();}
 async function loadData(){
@@ -365,8 +346,11 @@ async function renderReportArchive(){
  host.querySelectorAll('[data-archive-open]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_monthly_reports').select('report_html').eq('id',b.dataset.archiveOpen).eq('user_id',sessionUser.id).single();if(q.error){showMessage('message','Could not open archived report: '+q.error.message,'error');return;}const w=window.open('','_blank');if(!w){showMessage('message','Pop-up blocked. Allow pop-ups for this site and try again.','error');return;}w.document.open();w.document.write(q.data.report_html);w.document.close();w.focus();}));
 }
 $('dashboardTabButton').classList.add('active');
-$('dashboardTabButton').addEventListener('click',()=>{$('dashboardTab').classList.remove('hidden');$('archiveTab').classList.add('hidden');$('dashboardTabButton').classList.add('active');$('archiveTabButton').classList.remove('active');});
-$('archiveTabButton').addEventListener('click',async()=>{$('dashboardTab').classList.add('hidden');$('archiveTab').classList.remove('hidden');$('archiveTabButton').classList.add('active');$('dashboardTabButton').classList.remove('active');await renderReportArchive();});
+function showTab(tab){$('dashboardTab').classList.toggle('hidden',tab!=='dashboard');$('aiBudgetTab').classList.toggle('hidden',tab!=='budget');$('archiveTab').classList.toggle('hidden',tab!=='archive');$('dashboardTabButton').classList.toggle('active',tab==='dashboard');$('aiBudgetTabButton').classList.toggle('active',tab==='budget');$('archiveTabButton').classList.toggle('active',tab==='archive');}
+$('dashboardTabButton').addEventListener('click',()=>showTab('dashboard'));
+$('aiBudgetTabButton').addEventListener('click',async()=>{showTab('budget');await renderAIBudget();});
+$('refreshAIBudgetButton').addEventListener('click',renderAIBudget);
+$('archiveTabButton').addEventListener('click',async()=>{showTab('archive');await renderReportArchive();});
 $('refreshArchiveButton').addEventListener('click',renderReportArchive);
 
  $('downloadReportButton').addEventListener('click',downloadMonthlyReport);
@@ -375,7 +359,7 @@ $('signUpButton').addEventListener('click',async()=>{clearMessage('authMessage')
 $('transactionsMore').addEventListener('click',()=>{visibleTransactionCount+=4;loadData();});
  $('signOutButton').addEventListener('click',async()=>{await supabase.auth.signOut();await setView(null);});
 $('copyUserId').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(sessionUser.id);$('copyUserId').textContent='Copied';setTimeout(()=> $('copyUserId').textContent='Copy user ID',1600);}catch{$('copyUserId').textContent='Select ID above';}});
-$('syncButton').addEventListener('click',async()=>{const b=$('syncButton');b.disabled=true;b.textContent='Syncing…';clearMessage('message');try{const {data,error}=await supabase.functions.invoke('akahu-sync',{body:{}});if(error)throw error;if(data?.error)throw new Error(data.error);const latestNote=data.latest_transaction_date?' Latest transaction returned: '+data.latest_transaction_date+'.':' No transaction date returned.';const refreshNote=data.refresh_status==='requested'?' Akahu refresh requested; if this date is still old, the bank feed has not caught up yet.':'';showMessage('message','Sync finished: '+data.accounts_synced+' accounts checked and '+data.transactions_synced+' transactions received.'+latestNote+refreshNote,'success');await Promise.all([loadData(),renderIncomePlan()]);}catch(err){showMessage('message','Sync did not complete. '+(err.message||'Check the Edge Function secrets and setup status below.'),'error');}finally{b.disabled=false;b.textContent='↻ Sync Kiwibank';}});
+$('syncButton').addEventListener('click',async()=>{const b=$('syncButton');b.disabled=true;b.textContent='Syncing…';clearMessage('message');try{const {data,error}=await supabase.functions.invoke('akahu-sync',{body:{}});if(error)throw error;if(data?.error)throw new Error(data.error);const latestNote=data.latest_transaction_date?' Latest transaction returned: '+data.latest_transaction_date+'.':' No transaction date returned.';const refreshNote=data.refresh_status==='requested'?' Akahu refresh requested; if this date is still old, the bank feed has not caught up yet.':'';showMessage('message','Sync finished: '+data.accounts_synced+' accounts checked and '+data.transactions_synced+' transactions received.'+latestNote+refreshNote,'success');await Promise.all([loadData(),renderAIBudget()]);}catch(err){showMessage('message','Sync did not complete. '+(err.message||'Check the Edge Function secrets and setup status below.'),'error');}finally{b.disabled=false;b.textContent='↻ Sync Kiwibank';}});
 const {data:{session}}=await supabase.auth.getSession();await setView(session?.user||null);
 supabase.auth.onAuthStateChange((_event,session)=>{setView(session?.user||null)});
 </script>
