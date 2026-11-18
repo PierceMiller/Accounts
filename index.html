@@ -153,11 +153,11 @@ button{min-height:44px}
     <section class="hero"><div><div class="eyebrow">Personalised spending plan</div><h2>AI Budget</h2><p>Recommendations based on your imported income, transactions and recurring payments.</p></div><div class="actions"><button class="secondary" id="refreshAIBudgetButton" type="button">↻ Refresh analysis</button></div></section>
     <div class="notice" id="aiBudgetStatus">Analysing your recent financial activity…</div>
     <section class="grid" style="margin-top:14px">
-      <article class="card"><div class="metric-label">Safe-to-spend · monthly</div><div class="metric positive" id="aiSafeMonthly">—</div><div class="metric-note" id="aiSafeWeekly">Weekly allowance: —</div></article>
-      <article class="card"><div class="metric-label">Savings target · monthly</div><div class="metric" id="aiSavingsTarget">—</div><div class="metric-note">Suggested 15% of recognised household income</div></article>
+      <article class="card"><div class="metric-label">Safe-to-spend · monthly limit</div><div class="metric positive" id="aiSafeMonthly">—</div><div class="metric-note" id="aiSafeWeekly">Weekly allowance: —</div></article>
+      <article class="card"><div class="metric-label">Savings target · monthly</div><div class="metric" id="aiSavingsTarget">—</div><div class="metric-note">15% of average recognised household income</div></article>
       <article class="card"><div class="metric-label">Recognised monthly income</div><div class="metric" id="aiMonthlyIncome">—</div><div class="metric-note" id="aiIncomeDetail">Based on recurring fortnightly income</div></article>
     </section>
-    <section class="section"><div class="section-head"><h3>Safe-to-Spend breakdown</h3><span class="pill">Monthly limits</span></div><div class="card"><p class="sub">Suggested category ceilings are scaled from your last 90 days of settled spending. They add up to the recommended spending allowance, not your bank balance.</p><div id="aiCategoryLimits" class="list"><div class="feature-empty">Building your category limits…</div></div></div></section>
+    <section class="section"><div class="section-head"><h3>Safe-to-Spend breakdown</h3><span class="pill">Monthly limits</span></div><div class="card"><p class="sub">These are your saved monthly category limits. Their combined total is your hard spending cap; staying within it protects the savings target.</p><div id="aiCategoryLimits" class="list"><div class="feature-empty">Building your category limits…</div></div></div></section>
     <section class="section"><div class="section-head"><h3>Savings Plan</h3><span class="pill">Actionable opportunities</span></div><div class="card"><div id="aiSavingsActions" class="list"><div class="feature-empty">Looking for practical savings opportunities…</div></div></div></section>
     <section class="section"><div class="card"><div class="section-head"><h3>How this budget is calculated</h3><span class="pill">Transparent estimates</span></div><div class="sub">Uses your signed-in Account Dashboard data: recognised Rothbury salary and partner rent contribution, settled transaction history, and active recurring subscriptions. Transfers between your own accounts and P W MILLER transactions are excluded. The analysis is generated locally in the dashboard using transparent budgeting rules; it does not send your financial data to an external AI service.</div><div class="sub" id="aiBudgetUpdated" style="margin-top:10px"></div></div></section>
   </section>
@@ -202,39 +202,45 @@ function inferredCategory(t){
 }
 async function renderAIBudget(){
  const host=$('aiCategoryLimits'),actions=$('aiSavingsActions');
- host.innerHTML='<div class="feature-empty">Analysing your last 90 days…</div>';actions.innerHTML='<div class="feature-empty">Finding savings opportunities…</div>';
+ host.innerHTML='<div class="feature-empty">Loading your saved monthly limits…</div>';actions.innerHTML='<div class="feature-empty">Reviewing recent spending…</div>';
  const since=new Date(Date.now()-90*86400000).toISOString().slice(0,10);
- const [txRes,subRes]=await Promise.all([
+ const [txRes,subRes,budgetRes]=await Promise.all([
   supabase.from('finance_transactions').select('transaction_date,description,merchant_name,amount,transaction_type,is_pending').eq('user_id',sessionUser.id).gte('transaction_date',since).eq('is_pending',false).order('transaction_date',{ascending:false}).limit(1500),
-  supabase.from('finance_recurring_items').select('name,amount,frequency,status,item_type').eq('user_id',sessionUser.id).eq('status','active')
+  supabase.from('finance_recurring_items').select('name,amount,frequency,status,item_type').eq('user_id',sessionUser.id).eq('status','active'),
+  supabase.from('finance_budgets').select('name,amount,period,category_id').eq('user_id',sessionUser.id).eq('is_active',true).eq('period','monthly')
  ]);
- if(txRes.error){$('aiBudgetStatus').className='notice error';$('aiBudgetStatus').textContent='Could not analyse transactions: '+txRes.error.message;host.innerHTML='';actions.innerHTML='';return;}
- const rows=txRes.data||[];
+ if(txRes.error||budgetRes.error){const err=txRes.error||budgetRes.error;$('aiBudgetStatus').className='notice error';$('aiBudgetStatus').textContent='Could not load budget data: '+err.message;host.innerHTML='';actions.innerHTML='';return;}
+ const rows=txRes.data||[],budgets=budgetRes.data||[];
  const isTransfer=t=>String(t.transaction_type||'').toUpperCase()==='TRANSFER'||/\bTRANSFER\b|\bTRF\b|P W MILLER/i.test((t.description||'')+' '+(t.merchant_name||''));
- const salary=rows.filter(t=>Number(t.amount)>0&&!isTransfer(t)&&/SALARY\s+ROTHBURY|ROTHBURY\s+LTD/i.test((t.description||'')+' '+(t.merchant_name||'')));
- const rent=rows.filter(t=>Number(t.amount)>0&&!isTransfer(t)&&/AUTOMATIC PAYMENT RENT/i.test((t.description||'')+' '+(t.merchant_name||'')));
- const salaryPay=salary.length?Math.max(...salary.map(t=>Number(t.amount))):0,rentPay=rent.length?Math.max(...rent.map(t=>Number(t.amount))):0;
- const monthlyIncome=(salaryPay+rentPay)*26/12,expenses=rows.filter(t=>Number(t.amount)<0&&!isTransfer(t));
+ const credits=rows.filter(t=>Number(t.amount)>0&&!isTransfer(t));
+ const salary=credits.filter(t=>/SALARY\s+ROTHBURY|ROTHBURY\s+LTD/i.test((t.description||'')+' '+(t.merchant_name||'')));
+ const rent=credits.filter(t=>/AUTOMATIC PAYMENT RENT|DIRECT CREDIT RENT/i.test((t.description||'')+' '+(t.merchant_name||'')));
+ const average=arr=>arr.length?arr.reduce((n,t)=>n+Number(t.amount),0)/arr.length:0;
+ const salaryPay=average(salary),rentPay=average(rent);
+ const monthlyIncome=(salaryPay+rentPay)*26/12,savingsTarget=monthlyIncome*.15;
+ const expenses=rows.filter(t=>Number(t.amount)<0&&!isTransfer(t));
  const dates=rows.map(t=>new Date(t.transaction_date+'T12:00:00').getTime()).filter(Number.isFinite);
  const observedDays=dates.length?Math.max(30,Math.min(90,(Math.max(...dates)-Math.min(...dates))/86400000+1)):90,scale=30.4375/observedDays,grouped={};
  expenses.forEach(t=>{const cat=inferredCategory(t);grouped[cat]=(grouped[cat]||0)+Math.abs(Number(t.amount)||0);});
- const spend=Object.entries(grouped).map(([name,total])=>({name,monthly:total*scale})).sort((x,y)=>y.monthly-x.monthly);
- const historicalMonthly=spend.reduce((n,x)=>n+x.monthly,0),savingsTarget=monthlyIncome*.15,safeMonthly=Math.max(0,monthlyIncome-savingsTarget);
- const scaleFactor=historicalMonthly>0?Math.min(1,safeMonthly/historicalMonthly):0,categoryLimits=spend.map(x=>({...x,limit:x.monthly*scaleFactor}));
- const activeSubs=(subRes.data||[]).filter(x=>x.item_type==='subscription'),subMonthly=activeSubs.reduce((n,x)=>n+monthlyEquivalent(x),0);
- $('aiSafeMonthly').textContent=money(safeMonthly);$('aiSafeWeekly').textContent='Weekly allowance: '+money(safeMonthly/4.345);
- $('aiSavingsTarget').textContent=money(savingsTarget);$('aiMonthlyIncome').textContent=money(monthlyIncome);
- $('aiIncomeDetail').textContent=(salary.length?'Rothbury salary '+money(salaryPay)+' / fortnight':'Salary not detected')+' · '+(rent.length?'Partner rent '+money(rentPay)+' / fortnight':'Partner rent not detected');
- $('aiBudgetStatus').className='notice '+(rows.length?'success':'');
- $('aiBudgetStatus').textContent=rows.length?'Analysis uses '+rows.length+' settled transactions across approximately '+Math.round(observedDays)+' days. '+(historicalMonthly>safeMonthly?'Historical spending is above the recommended safe-to-spend limit by '+money(historicalMonthly-safeMonthly)+'.':'Recent spending is within the suggested spending allowance.'):'No settled transactions were found in the last 90 days. Sync your bank accounts to build a reliable budget.';
- host.innerHTML=categoryLimits.length?categoryLimits.map(x=>'<div class="item" style="display:block"><div style="display:flex;justify-content:space-between;gap:12px"><div><div class="item-name">'+escapeHtml(x.name)+'</div><div class="sub">Recent monthly average '+money(x.monthly)+'</div></div><div class="amount">'+money(x.limit)+'</div></div><div class="progress"><span style="width:'+Math.min(100,safeMonthly?x.limit/safeMonthly*100:0)+'%"></span></div><div class="sub" style="margin-top:5px">Recommended monthly limit</div></div>').join(''):'<div class="feature-empty">Not enough transaction history to calculate category limits yet.</div>';
- const discretionary=new Set(['Entertainment','Dining out','Shopping','Subscriptions','Personal care','Other']);
- const opportunities=spend.filter(x=>x.monthly>=20).map(x=>({name:x.name,current:x.monthly,rate:discretionary.has(x.name)?0.15:0.05,saving:x.monthly*(discretionary.has(x.name)?0.15:0.05),tip:discretionary.has(x.name)?'Set a weekly cap and reduce impulse or convenience purchases.':'Compare providers, plans or usage before reducing this essential category.'})).sort((x,y)=>y.saving-x.saving).slice(0,4);
- const insights=opportunities.map(x=>'<div class="item"><div><div class="item-name">'+escapeHtml(x.name)+' · potential saving '+money(x.saving)+'/month</div><div class="sub">'+money(x.current)+' recent monthly average. '+escapeHtml(x.tip)+'</div></div><span class="amount positive">−'+Math.round(x.rate*100)+'%</span></div>');
- if(activeSubs.length&&subMonthly>0)insights.push('<div class="item"><div><div class="item-name">Review recurring subscriptions · '+money(subMonthly)+'/month</div><div class="sub">'+activeSubs.length+' active subscription(s). Pause or cancel services you no longer use, and check for duplicate plans.</div></div><span class="amount positive">Review</span></div>');
- const potential=opportunities.reduce((n,x)=>n+x.saving,0);if(potential>0)insights.unshift('<div class="notice success">A realistic first target is to free up around '+money(potential)+'/month from the largest adjustable spending areas. This is an estimate, not a guaranteed saving.</div>');
- if(!insights.length)insights.push('<div class="feature-empty">More settled transaction history is needed before specific savings opportunities can be identified.</div>');
- actions.innerHTML=insights.join('');$('aiBudgetUpdated').textContent='Analysis refreshed '+new Date().toLocaleString('en-NZ')+'. Income recognition uses the recurring fortnightly salary and partner rent patterns already used by your dashboard.';
+ const spend=Object.entries(grouped).map(([name,total])=>({name,monthly:total*scale}));
+ const categoryLimits=budgets.map(b=>{const name=financeCategories.find(c=>c.id===b.category_id)?.name||b.name;const recent=spend.find(x=>x.name===name);return {name,limit:Number(b.amount)||0,monthly:recent?.monthly||0};}).sort((x,y)=>y.limit-x.limit);
+ const budgetTotal=categoryLimits.reduce((n,x)=>n+x.limit,0),safeMonthly=budgetTotal;
+ const activeSubs=(subRes.data||[]).filter(x=>x.item_type==='subscription');
+ const subscriptionMonthly=activeSubs.reduce((n,x)=>n+monthlyEquivalent(x),0);
+ $('aiSafeMonthly').textContent=money(safeMonthly);
+ $('aiSafeWeekly').textContent='Weekly allowance: '+money(safeMonthly/4.345)+' · hard monthly cap '+money(safeMonthly);
+ $('aiSavingsTarget').textContent=money(savingsTarget);
+ $('aiMonthlyIncome').textContent=money(monthlyIncome);
+ $('aiIncomeDetail').textContent='Average salary '+money(salaryPay)+' + partner rent '+money(rentPay)+' per fortnight';
+ $('aiBudgetStatus').className='notice '+(budgets.length&&rows.length?'success':'');
+ $('aiBudgetStatus').textContent=budgets.length?'Your saved category limits total '+money(budgetTotal)+' per month. Keep spending within this cap to preserve an estimated '+money(savingsTarget)+' monthly savings target (15% of recognised household income). Based on '+rows.length+' settled transactions over '+Math.round(observedDays)+' days.': 'No active monthly category limits are saved yet. Add budget limits to establish your spending cap.';
+ host.innerHTML=categoryLimits.length?categoryLimits.map(x=>{const pct=x.limit?Math.min(100,x.monthly/x.limit*100):0;const over=x.monthly>x.limit;return '<div class="item" style="display:block"><div style="display:flex;justify-content:space-between;gap:12px"><div><div class="item-name">'+escapeHtml(x.name)+'</div><div class="sub">Recent average '+money(x.monthly)+'/month</div></div><div style="text-align:right"><div class="amount">'+money(x.limit)+'</div><div class="sub">monthly limit</div></div></div><div class="progress"><span style="width:'+pct+'%;'+(over?'background:var(--danger,#d66)':'')+'"></span></div><div class="sub" style="margin-top:5px">'+(over?'Over limit by '+money(x.monthly-x.limit)+'/month':money(Math.max(0,x.limit-x.monthly))+' remaining against recent average')+'</div></div>';}).join(''):'<div class="feature-empty">No monthly limits found. Your budget setup needs to be completed.</div>';
+ const overs=categoryLimits.filter(x=>x.monthly>x.limit+5).sort((x,y)=>(y.monthly-y.limit)-(x.monthly-x.limit));
+ const insights=overs.slice(0,4).map(x=>'<div class="item"><div><div class="item-name">'+escapeHtml(x.name)+' · '+money(x.monthly-x.limit)+' over its limit</div><div class="sub">Recent average '+money(x.monthly)+' against a '+money(x.limit)+' monthly cap. Aim to bring this category back within its limit.</div></div><span class="amount">'+money(x.limit)+'</span></div>');
+ if(activeSubs.length)insights.push('<div class="item"><div><div class="item-name">Review recurring payments · '+money(subscriptionMonthly)+'/month</div><div class="sub">'+activeSubs.length+' active recurring subscription items. Check that each is still needed and correctly classified.</div></div><span class="amount">Review</span></div>');
+ if(!insights.length)insights.push('<div class="notice success">Your recent category averages are currently within the saved limits. Keep the monthly cap in place and move any underspend into savings.</div>');
+ actions.innerHTML=insights.join('');
+ $('aiBudgetUpdated').textContent='Saved monthly limits loaded from your finance budget records. Analysis refreshed '+new Date().toLocaleString('en-NZ')+'. Savings target is calculated from average salary and partner rent deposits over the last 90 days.';
 }
 
 const defaultCategories = ['Housing','Groceries','Transport','Utilities','Entertainment','Dining out','Shopping','Health','Insurance','Subscriptions','Personal care','Other'];
