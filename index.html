@@ -336,7 +336,7 @@ async function loadData(){
  $('transactionsList').innerHTML=tx.length?tx.slice(0,visibleTransactionCount).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+' · '+escapeHtml(financeCategories.find(c=>c.id===t.category_id)?.name||'Uncategorised')+(t.is_pending?' · Pending':'')+'</div></div><div class="amount '+(Number(t.amount)>=0?'positive':'negative')+'">'+(Number(t.amount)>0?'+':'−')+money(Math.abs(Number(t.amount)))+'</div></div>').join():'<div class="empty">No transactions yet. Your imported transactions will appear here.</div>';
  $('transactionsMore').classList.toggle('hidden',tx.length<=visibleTransactionCount);
  $('transactionsMore').textContent='Show 4 more';
- $('lastSynced').textContent=cr.data?.last_synced_at?'Last synced '+new Date(cr.data.last_synced_at).toLocaleString('en-NZ'):'Not synced yet';
+ $('lastSynced').textContent=cr.data?.last_synced_at?'Last synced '+new Intl.DateTimeFormat('en-NZ',{dateStyle:'medium',timeStyle:'short',timeZone:'Pacific/Auckland'}).format(new Date(cr.data.last_synced_at)):'Not synced yet';
 }
 
  async function downloadMonthlyReport(){
@@ -372,7 +372,7 @@ async function loadData(){
    <h2>All settled transactions for ${mn}</h2><p class="muted">Cash-flow totals exclude internal transfers and transactions matching P W MILLER. The transaction list includes all settled transactions for transparency.</p><table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th class="num">Amount</th></tr></thead><tbody>${txRows}</tbody></table>
    <h2>Subscriptions and recurring payments</h2><table><thead><tr><th>Name</th><th>Kind</th><th>Frequency</th><th>Status</th><th class="num">Amount</th></tr></thead><tbody>${subRows}</tbody></table>
    <h2>Active budgets</h2><table><thead><tr><th>Category</th><th>Period</th><th class="num">Budget limit</th></tr></thead><tbody>${budgetRows}</tbody></table>
-   <p class="note">Generated from your signed-in dashboard on ${new Date().toLocaleDateString('en-NZ')}. Totals use the same settled transaction and transfer-exclusion rules as the dashboard. Check against your bank statement before using for formal accounting.</p></body></html>`);
+   <p class="note">Generated from your signed-in dashboard on ${new Intl.DateTimeFormat('en-NZ',{dateStyle:'medium',timeZone:'Pacific/Auckland'}).format(new Date())}. Totals use the same settled transaction and transfer-exclusion rules as the dashboard. Check against your bank statement before using for formal accounting.</p></body></html>`);
    win.document.close();
    const reportHtml='<!doctype html>'+win.document.documentElement.outerHTML;
    const saved=await supabase.from('finance_monthly_reports').upsert({user_id:sessionUser.id,report_month:monthStart,report_html:reportHtml,summary:{month:mn,money_in:inc,money_out:out,net:inc-out,transaction_count:tx.length}},{onConflict:'user_id,report_month'}).select('id').single();
@@ -390,7 +390,7 @@ async function renderReportArchive(){
  if(r.error){host.innerHTML='<div class="feature-empty">Could not load report archive: '+escapeHtml(r.error.message)+'</div>';return;}
  const reports=r.data||[];
  if(!reports.length){host.innerHTML='<div class="empty">No reports archived yet. Generate one from the Dashboard and it will appear here.</div>';return;}
- host.innerHTML=reports.map(x=>{const month=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(x.report_month+'T12:00:00Z'));const s=x.summary||{};return '<div class="item"><div><div class="item-name">'+escapeHtml(month)+'</div><div class="sub">Generated '+new Date(x.generated_at).toLocaleString('en-NZ')+' · In '+money(s.money_in)+' · Out '+money(s.money_out)+'</div></div><div class="actions"><button class="secondary small-button" data-archive-open="'+x.id+'">Open / PDF</button></div></div>';}).join('');
+ host.innerHTML=reports.map(x=>{const month=new Intl.DateTimeFormat('en-NZ',{month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(new Date(x.report_month+'T12:00:00Z'));const s=x.summary||{};return '<div class="item"><div><div class="item-name">'+escapeHtml(month)+'</div><div class="sub">Generated '+new Intl.DateTimeFormat('en-NZ',{dateStyle:'medium',timeStyle:'short',timeZone:'Pacific/Auckland'}).format(new Date(x.generated_at))+' · In '+money(s.money_in)+' · Out '+money(s.money_out)+'</div></div><div class="actions"><button class="secondary small-button" data-archive-open="'+x.id+'">Open / PDF</button></div></div>';}).join('');
  host.querySelectorAll('[data-archive-open]').forEach(b=>b.addEventListener('click',async()=>{const q=await supabase.from('finance_monthly_reports').select('report_html').eq('id',b.dataset.archiveOpen).eq('user_id',sessionUser.id).single();if(q.error){showMessage('message','Could not open archived report: '+q.error.message,'error');return;}const w=window.open('','_blank');if(!w){showMessage('message','Pop-up blocked. Allow pop-ups for this site and try again.','error');return;}w.document.open();w.document.write(q.data.report_html);w.document.close();w.focus();}));
 }
 $('dashboardTabButton').classList.add('active');
