@@ -204,6 +204,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 let sessionUser = null;
 let financeCategories = [];
+let transactionPage = 0;
+const transactionPageSize = 20;
+let transactionSearchTimer = null;
 let visibleTransactionCount = 4;
 const money = n => new Intl.NumberFormat('en-NZ',{style:'currency',currency:'NZD'}).format(Number(n)||0);
 function showMessage(id, text, type='') { const el=$(id); el.textContent=text; el.className='notice'+(type?' '+type:''); el.classList.remove('hidden'); }
