@@ -112,6 +112,28 @@ button{min-height:44px}
   .plan-metrics .metric-label{font-size:13px}
 }
 
+
+/* Personal finance coach and six-month cashflow chart */
+.coach-verdict{padding:18px;border:1px solid #315b4d;border-radius:14px;background:linear-gradient(145deg,#1b3a34,#142820);margin-bottom:14px}
+.coach-verdict h4{font-size:20px;line-height:1.25;margin:6px 0 8px}
+.coach-verdict p{margin:0;color:#d0e3da}
+.coach-actions{display:grid;gap:10px;margin-top:14px}
+.coach-action{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#101a24}
+.coach-action strong{display:block;margin-bottom:3px}
+.coach-action .sub{line-height:1.45}
+.trend-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--muted)}
+.trend-key{display:inline-flex;align-items:center;gap:6px}
+.trend-dot{width:9px;height:9px;border-radius:3px;display:inline-block}
+.trend-bars{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;align-items:end;min-height:190px}
+.trend-month{min-width:0;text-align:center}
+.trend-pair{height:145px;display:flex;align-items:end;justify-content:center;gap:5px;border-bottom:1px solid #344453;padding:0 2px}
+.trend-bar{width:min(25px,42%);min-height:2px;border-radius:5px 5px 0 0;position:relative}
+.trend-bar.income{background:#70cda0}
+.trend-bar.spending{background:#e58b80}
+.trend-month-label{font-size:11px;color:var(--muted);margin-top:8px}
+.trend-month-value{font-size:10px;color:var(--muted);white-space:nowrap}
+@media(max-width:600px){.trend-bars{gap:4px}.trend-pair{height:118px;gap:3px}.trend-month-label{font-size:10px}.trend-month-value{font-size:9px}.coach-verdict h4{font-size:18px}}
+
 </style>
 </head>
 <body>
@@ -156,6 +178,8 @@ button{min-height:44px}
   <section id="aiBudgetTab" class="hidden">
     <section class="hero"><div><div class="eyebrow">Personalised spending plan</div><h2>AI Budget</h2><p>Recommendations based on your imported income, transactions and recurring payments.</p></div><div class="actions"><button class="secondary" id="refreshAIBudgetButton" type="button">↻ Refresh analysis</button></div></section>
     <div class="notice" id="aiBudgetStatus">Analysing your recent financial activity…</div>
+    <section class="section"><div class="section-head"><h3>Your money coach</h3><span class="pill">Based on your actual transactions</span></div><div class="card" id="coachVerdict"><div class="feature-empty">Reviewing your income and spending history…</div></div></section>
+    <section class="section"><div class="section-head"><h3>Income vs spending · last 6 months</h3><span class="sub">NZD · settled transactions</span></div><div class="card"><div id="moneyTrendChart" class="money-trend"><div class="feature-empty">Building your six-month trend…</div></div><div class="sub" id="moneyTrendNote" style="margin-top:12px">Current month is shown as month-to-date.</div></div></section>
     <section class="grid" style="margin-top:14px">
       <article class="card"><div class="metric-label">Safe-to-spend · monthly limit</div><div class="metric positive" id="aiSafeMonthly">—</div><div class="metric-note" id="aiSafeWeekly">Weekly allowance: —</div></article>
       <article class="card"><div class="metric-label">Savings target · monthly</div><div class="metric" id="aiSavingsTarget">—</div><div class="metric-note">15% of average recognised household income</div></article>
@@ -240,51 +264,97 @@ function monthBounds(month){const [y,m]=month.split('-').map(Number);const nextY
 function monthOffset(month,delta){const [y,m]=month.split('-').map(Number);const d=new Date(Date.UTC(y,m-1+delta,1));return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-01';}
 async function renderAIBudget(){
  const host=$('aiCategoryLimits'),actions=$('aiSavingsActions');
- host.innerHTML='<div class="feature-empty">Loading all transactions for the selected month…</div>';actions.innerHTML='<div class="feature-empty">Reviewing spending…</div>';
+ host.innerHTML='<div class="feature-empty">Loading transactions and building your advice…</div>';
+ actions.innerHTML='<div class="feature-empty">Finding your best next moves…</div>';
+ $('coachVerdict').innerHTML='<div class="feature-empty">Reviewing your six-month income and spending…</div>';
+ $('moneyTrendChart').innerHTML='<div class="feature-empty">Building your six-month trend…</div>';
  const month=selectedBreakdownMonth();$('breakdownMonth').value=month;
- const bounds=monthBounds(month);
+ const bounds=monthBounds(month),historyStart=monthOffset(month,-5);
  $('breakdownPeriodNote').textContent='Settled transactions from '+dateLabel(bounds.start)+' to '+dateLabel(new Date(Date.parse(bounds.end+'T00:00:00Z')-86400000).toISOString().slice(0,10))+' · Pacific/Auckland';
  try{
-  const [monthRows,allBudgets,subRes]=await Promise.all([
-   fetchAllTransactions(()=>supabase.from('finance_transactions').select('id,transaction_date,description,merchant_name,amount,transaction_type,is_pending,category_id').eq('user_id',sessionUser.id).gte('transaction_date',bounds.start).lt('transaction_date',bounds.end).eq('is_pending',false).order('transaction_date',{ascending:true}).order('id',{ascending:true})),
+  const [allRows,budgetRes,subRes]=await Promise.all([
+   fetchAllTransactions(()=>supabase.from('finance_transactions').select('id,transaction_date,description,merchant_name,amount,transaction_type,is_pending,category_id').eq('user_id',sessionUser.id).gte('transaction_date',historyStart).lt('transaction_date',bounds.end).eq('is_pending',false).order('transaction_date',{ascending:true}).order('id',{ascending:true})),
    supabase.from('finance_budgets').select('name,amount,period,category_id').eq('user_id',sessionUser.id).eq('is_active',true).eq('period','monthly'),
    supabase.from('finance_recurring_items').select('name,amount,frequency,status,item_type').eq('user_id',sessionUser.id).eq('status','active')
   ]);
-  if(allBudgets.error||subRes.error)throw allBudgets.error||subRes.error;
-  const budgets=allBudgets.data||[];
-  const isTransfer=t=>String(t.transaction_type||'').toUpperCase()==='TRANSFER'||/\\bTRANSFER\\b|\\bTRF\\b|P W MILLER/i.test((t.description||'')+' '+(t.merchant_name||''));
-  const valid=monthRows.filter(t=>!isTransfer(t));
-  const incomeRows=valid.filter(t=>Number(t.amount)>0),expenseRows=valid.filter(t=>Number(t.amount)<0);
+  if(budgetRes.error||subRes.error)throw budgetRes.error||subRes.error;
+  const isTransfer=t=>String(t.transaction_type||'').toUpperCase()==='TRANSFER'||/\bTRANSFER\b|\bTRF\b|P W MILLER/i.test((t.description||'')+' '+(t.merchant_name||''));
+  const valid=allRows.filter(t=>!isTransfer(t));
+  const selectedRows=valid.filter(t=>t.transaction_date>=bounds.start&&t.transaction_date<bounds.end);
+  const incomeRows=selectedRows.filter(t=>Number(t.amount)>0),expenseRows=selectedRows.filter(t=>Number(t.amount)<0);
   const income=incomeRows.reduce((n,t)=>n+Number(t.amount),0),spending=expenseRows.reduce((n,t)=>n+Math.abs(Number(t.amount)),0),net=income-spending;
   const savingsTarget=income*.15;
   $('breakdownIncome').textContent=money(income);$('breakdownSpending').textContent=money(spending);$('breakdownSavings').textContent=money(net);$('breakdownSavings').className='metric '+(net>=0?'positive':'negative');$('breakdownSavingsTarget').textContent=money(savingsTarget);
-  const categoryById=new Map(financeCategories.map(c=>[c.id,c]));
+  const categoryById=new Map(financeCategories.map(x=>[x.id,x]));
   const catName=t=>t.category_id?(categoryById.get(t.category_id)?.name||'Other'):'Uncategorised';
   const grouped={};expenseRows.forEach(t=>{const name=catName(t);(grouped[name]??=[]).push(t);});
-  const uncat=grouped['Uncategorised']||[];const uncatTotal=uncat.reduce((n,t)=>n+Math.abs(Number(t.amount)),0);
+  const uncat=grouped['Uncategorised']||[],uncatTotal=uncat.reduce((n,t)=>n+Math.abs(Number(t.amount)),0);
   $('breakdownUncategorised').textContent=money(uncatTotal);$('breakdownUncategorisedCount').textContent=uncat.length+' transaction'+(uncat.length===1?'':'s')+' needing a category';
-  const budgetByName=new Map(budgets.map(b=>[categoryById.get(b.category_id)?.name||b.name,Number(b.amount)||0]));
+  const budgets=budgetRes.data||[],budgetByName=new Map(budgets.map(b=>[categoryById.get(b.category_id)?.name||b.name,Number(b.amount)||0]));
   const names=[...new Set([...Object.keys(grouped),...budgetByName.keys()])].sort((a,b)=>a==='Uncategorised'?-1:b==='Uncategorised'?1:a.localeCompare(b));
-  const rowsHtml=names.map(name=>{
+  host.innerHTML=names.map(name=>{
    const tx=grouped[name]||[],spent=tx.reduce((n,t)=>n+Math.abs(Number(t.amount)),0),limit=budgetByName.get(name),hasBudget=budgetByName.has(name),remaining=hasBudget?limit-spent:null,pct=hasBudget&&limit>0?Math.min(100,spent/limit*100):0,over=hasBudget&&spent>limit;
    const txHtml=tx.slice().sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date)).map(t=>'<div class="item"><div><div class="item-name">'+escapeHtml(t.merchant_name||t.description||'Transaction')+'</div><div class="sub">'+dateLabel(t.transaction_date)+' · '+escapeHtml(t.description||'')+'</div></div><div class="amount negative">−'+money(Math.abs(Number(t.amount)))+'</div></div>').join('');
    return '<details class="item" style="display:block"><summary style="display:flex;justify-content:space-between;gap:12px;align-items:center;cursor:pointer;list-style-position:inside"><span><strong>'+escapeHtml(name)+'</strong><span class="sub" style="display:block;margin-left:18px">'+tx.length+' transaction'+(tx.length===1?'':'s')+'</span></span><span style="text-align:right"><strong class="amount">'+money(spent)+'</strong><span class="sub" style="display:block">'+(hasBudget?'Budget '+money(limit):'No budget set')+'</span></span></summary><div style="margin:10px 0 0 18px"><div class="sub">'+(hasBudget?(over?'Over budget by '+money(-remaining):money(remaining)+' remaining'):'Set a monthly budget to track remaining allowance')+'</div>'+(hasBudget?'<div class="progress '+(over?'over':'')+'"><span style="width:'+pct+'%"></span></div>':'')+(txHtml||'<div class="sub" style="padding:12px 0">No spending in this category during the selected month.</div>')+'</div></details>';
-  }).join('');
-  host.innerHTML=rowsHtml||'<div class="empty">No spending or budgets found for this month.</div>';
-  $('aiSafeMonthly').textContent=money(budgets.reduce((n,b)=>n+(Number(b.amount)||0),0));
-  $('aiSafeWeekly').textContent='Weekly equivalent: '+money(budgets.reduce((n,b)=>n+(Number(b.amount)||0),0)/4.345)+' · saved monthly limits';
-  $('aiSavingsTarget').textContent=money(savingsTarget);$('aiMonthlyIncome').textContent=money(income);
-  $('aiIncomeDetail').textContent=incomeRows.length+' settled incoming transactions in '+month;
-  $('aiBudgetStatus').className='notice '+(monthRows.length?'success':'');
-  $('aiBudgetStatus').textContent=monthRows.length?'For '+month+', actual income is '+money(income)+', spending is '+money(spending)+', and net surplus is '+money(net)+'. Transfers and P W MILLER transactions are excluded.':'No settled transactions found for '+month+'.';
-  const overs=names.filter(n=>budgetByName.has(n)).map(n=>({name:n,spent:(grouped[n]||[]).reduce((v,t)=>v+Math.abs(Number(t.amount)),0),limit:budgetByName.get(n)})).filter(x=>x.spent>x.limit).sort((a,b)=>(b.spent-b.limit)-(a.spent-a.limit));
+  }).join('')||'<div class="empty">No spending or budgets found for this month.</div>';
   const activeSubs=(subRes.data||[]).filter(x=>x.item_type==='subscription'),subscriptionMonthly=activeSubs.reduce((n,x)=>n+monthlyEquivalent(x),0);
+  const currentMonth=monthRange().start.slice(0,7);
+  const monthKeys=Array.from({length:6},(_,i)=>monthOffset(month,-5+i).slice(0,7));
+  const monthly=monthKeys.map(key=>{
+   const rows=valid.filter(t=>String(t.transaction_date).slice(0,7)===key);
+   return {key,rows,income:rows.filter(t=>Number(t.amount)>0).reduce((n,t)=>n+Number(t.amount),0),spending:rows.filter(t=>Number(t.amount)<0).reduce((n,t)=>n+Math.abs(Number(t.amount)),0)};
+  });
+  const complete=monthly.filter(x=>x.key!==currentMonth&&x.key!==month);
+  const baseline=complete.length?complete:monthly.filter(x=>x.key!==month);
+  const avgIncome=baseline.length?baseline.reduce((n,x)=>n+x.income,0)/baseline.length:0;
+  const avgSpending=baseline.length?baseline.reduce((n,x)=>n+x.spending,0)/baseline.length:0;
+  const avgSurplus=avgIncome-avgSpending;
+  const chartMax=Math.max(1,...monthly.flatMap(x=>[x.income,x.spending]));
+  const monthName=key=>new Intl.DateTimeFormat('en-NZ',{month:'short',timeZone:'Pacific/Auckland'}).format(new Date(key+'-15T12:00:00Z'));
+  $('moneyTrendChart').innerHTML='<div class="trend-legend"><span class="trend-key"><i class="trend-dot" style="background:#70cda0"></i>Income</span><span class="trend-key"><i class="trend-dot" style="background:#e58b80"></i>Spending</span></div><div class="trend-bars">'+monthly.map(x=>'<div class="trend-month"><div class="trend-pair"><div class="trend-bar income" title="Income '+money(x.income)+'" style="height:'+Math.max(x.income?3:0,x.income/chartMax*100)+'%"></div><div class="trend-bar spending" title="Spending '+money(x.spending)+'" style="height:'+Math.max(x.spending?3:0,x.spending/chartMax*100)+'%"></div></div><div class="trend-month-label">'+monthName(x.key)+(x.key===currentMonth?'*':'')+'</div><div class="trend-month-value">'+money(x.income-x.spending)+'</div></div>').join('')+'</div>';
+  $('moneyTrendNote').textContent='Bars compare settled income and spending. Net below each month. '+(monthly.some(x=>x.key===currentMonth)?'* Current month is month-to-date, not a full-month comparison.':'');
+  const spendingByCategory={};valid.filter(t=>Number(t.amount)<0&&String(t.transaction_date).slice(0,7)!==currentMonth).forEach(t=>{const key=catName(t);spendingByCategory[key]=(spendingByCategory[key]||0)+Math.abs(Number(t.amount));});
+  const topVariable=Object.entries(spendingByCategory).filter(([n])=>!['Rent','Debt repayments','Investments','Bank fees & interest','Uncategorised'].includes(n)).sort((a,b)=>b[1]-a[1])[0];
+  const rentBudget=budgetByName.get('Rent')||1733.33;
+  const budgetTotal=budgets.reduce((n,b)=>n+(Number(b.amount)||0),0);
+  const planIncome=avgIncome||5188.95;
+  const safeMonthly=Math.max(0,planIncome*0.85);
+  const safeWeekly=safeMonthly/4.345;
+  $('aiSafeMonthly').textContent=money(safeMonthly);
+  $('aiSafeWeekly').textContent='Weekly spending ceiling: '+money(safeWeekly)+' · based on 85% of average income';
+  $('aiSavingsTarget').textContent=money(planIncome*.15);
+  $('aiMonthlyIncome').textContent=money(planIncome);
+  $('aiIncomeDetail').textContent='Average across '+baseline.length+' completed month'+(baseline.length===1?'':'s')+'; includes salary and partner rent contribution';
+  const currentMonthIsSelected=month===currentMonth;
+  const daysElapsed=currentMonthIsSelected?Math.max(1,new Date().getDate()):0;
+  const daysInMonth=currentMonthIsSelected?new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate():30;
+  const projectedSpend=currentMonthIsSelected?spending/daysElapsed*daysInMonth:spending;
+  const overs=names.filter(n=>budgetByName.has(n)).map(n=>({name:n,spent:(grouped[n]||[]).reduce((v,t)=>v+Math.abs(Number(t.amount)),0),limit:budgetByName.get(n)})).filter(x=>x.spent>x.limit).sort((a,b)=>(b.spent-b.limit)-(a.spent-a.limit));
+  const coachActions=[];
+  if(avgSurplus<=0)coachActions.push({title:'Stop the monthly shortfall first',body:'Your completed-month average is spending '+money(avgSpending)+' against income of '+money(avgIncome)+'. Pause non-essential purchases until spending is consistently below income.'});
+  else coachActions.push({title:'Automate your savings on payday',body:'Move '+money(planIncome*.15)+' per month (about '+money(planIncome*.15/2)+' each fortnight) into a separate savings account before discretionary spending.'});
+  if(topVariable)coachActions.push({title:'Put a cap on '+topVariable[0],body:'It is your largest flexible spending category across the completed months at '+money(topVariable[1]/Math.max(1,baseline.length))+' per month on average. Set a starting cap of '+money(topVariable[1]/Math.max(1,baseline.length)*.8)+' and review it weekly.'});
+  if(currentMonthIsSelected&&projectedSpend>safeMonthly)coachActions.push({title:'Slow down for the rest of this month',body:'At the current pace, spending could reach about '+money(projectedSpend)+', above your '+money(safeMonthly)+' monthly ceiling. Keep remaining discretionary spending to essentials until month end.'});
+  if(overs.length)coachActions.push({title:'Fix the budget categories already over limit',body:overs.slice(0,3).map(x=>x.name+' is '+money(x.spent-x.limit)+' over its '+money(x.limit)+' limit').join('; ')+'. Reduce these first rather than cutting every category equally.'});
+  if(uncatTotal>0)coachActions.push({title:'Clean up uncategorised spending',body+': '+money(uncatTotal)+' across '+uncat.length+' transactions is not yet assigned. Categorise these so future advice is more accurate.'});
+  if(activeSubs.length)coachActions.push({title:'Audit recurring subscriptions',body:'You have '+activeSubs.length+' active subscriptions costing about '+money(subscriptionMonthly)+' per month. Cancel or pause anything you have not used in the last 30 days.'});
+  const verdict=avgSurplus>0?'You have room to save — make it automatic.':'Your first goal is to create a reliable monthly surplus.';
+  $('coachVerdict').innerHTML='<div class="coach-verdict"><div class="eyebrow">My recommendation</div><h4>'+verdict+'</h4><p>Across '+baseline.length+' completed months, household income averaged '+money(avgIncome)+' and spending averaged '+money(avgSpending)+'. '+(avgSurplus>=0?'That leaves an estimated '+money(avgSurplus)+' monthly surplus before any unrecorded costs.':'That is an estimated monthly gap of '+money(Math.abs(avgSurplus))+' to close.')+'</p></div><div class="coach-actions">'+coachActions.slice(0,5).map((x,i)=>'<div class="coach-action"><div class="eyebrow">'+(i+1)+'</div><div><strong>'+escapeHtml(x.title)+'</strong><div class="sub">'+escapeHtml(x.body)+'</div></div></div>').join('')+'</div>';
+  const statusText=selectedRows.length?'For '+month+', actual income is '+money(income)+', spending is '+money(spending)+', and net surplus is '+money(net)+'.':'No settled transactions found for '+month+'.';
+  $('aiBudgetStatus').className='notice '+(selectedRows.length?'success':'');
+  $('aiBudgetStatus').textContent=statusText+' Transfers and P W MILLER transactions are excluded. Advice uses '+baseline.length+' completed months of history.';
   const insights=overs.slice(0,4).map(x=>'<div class="item"><div><div class="item-name">'+escapeHtml(x.name)+' · '+money(x.spent-x.limit)+' over budget</div><div class="sub">Actual '+money(x.spent)+' against '+money(x.limit)+' budget for '+month+'.</div></div></div>');
-  if(activeSubs.length)insights.push('<div class="item"><div><div class="item-name">Review recurring payments · '+money(subscriptionMonthly)+'/month</div><div class="sub">'+activeSubs.length+' active subscription items.</div></div></div>');
+  if(activeSubs.length)insights.push('<div class="item"><div><div class="item-name">Review recurring payments · '+money(subscriptionMonthly)+'/month</div><div class="sub">'+activeSubs.length+' active subscriptions.</div></div></div>');
   if(!insights.length)insights.push('<div class="notice success">No category budgets were exceeded in '+month+'.</div>');
   actions.innerHTML=insights.join('');
-  $('aiBudgetUpdated').textContent='Refreshed '+new Intl.DateTimeFormat('en-NZ',{dateStyle:'medium',timeStyle:'short',timeZone:'Pacific/Auckland'}).format(new Date())+'. All settled transactions for the selected month were paged in; no 1,500-row cap.';
- }catch(err){$('aiBudgetStatus').className='notice error';$('aiBudgetStatus').textContent='Could not load breakdown: '+(err.message||'Unknown error');host.innerHTML='';actions.innerHTML='';}
+  $('aiBudgetUpdated').textContent='Refreshed '+new Intl.DateTimeFormat('en-NZ',{dateStyle:'medium',timeStyle:'short',timeZone:'Pacific/Auckland'}).format(new Date())+'. Loaded all transactions from '+historyStart+' through '+bounds.end+' using pagination; no 1,500-row cap.';
+ }catch(err){
+  $('aiBudgetStatus').className='notice error';$('aiBudgetStatus').textContent='Could not load advice: '+(err.message||'Unknown error');
+  host.innerHTML='<div class="feature-empty">Could not build the category breakdown.</div>';
+  actions.innerHTML='<div class="feature-empty">Could not build recommendations.</div>';
+  $('coachVerdict').innerHTML='<div class="feature-empty">Analysis could not be completed.</div>';
+  $('moneyTrendChart').innerHTML='<div class="feature-empty">Chart could not be built.</div>';
+ }
 }
 
 async function loadPlanningFeatures(){
