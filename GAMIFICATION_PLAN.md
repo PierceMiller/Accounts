@@ -29,10 +29,12 @@
 
 ## Delivery phases
 
-### Phase 1 — UX prototype (this commit)
+### Phase 1 — UX prototype (completed in this branch)
 - Create a standalone preview page with fictional demo values.
 - RPG profile, XP bar, levels, quests, achievements, boss progress, and virtual unlocks.
 - Clearly label all values as demo data; no backend connection.
+- Implement overview, quest journal and filters, achievement codex, boss encounters, character/inventory, title equipping, local demo progress persistence, and reset controls.
+- Demo quest claims award XP locally and unlock demo achievements; no production data or API calls.
 
 ### Phase 2 — read-only finance adapter
 - Add an adapter in the app that derives only safe aggregate signals from the already-loaded finance data.
