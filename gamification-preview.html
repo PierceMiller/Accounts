@@ -1,52 +1,149 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#101923"><title>Accounts — Questboard Preview</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b131d">
+<title>Questboard · Pierce Miller Accounts</title>
 <style>
-:root{color-scheme:dark;--bg:#0b121b;--panel:#121e2a;--panel2:#172634;--line:#293b4b;--text:#edf4f7;--muted:#9aafbd;--green:#78d5a7;--gold:#f2c66d;--blue:#85b9ef;--red:#e58b80}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 12% -12%,#234356 0,transparent 42%),var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
-main{max-width:1120px;margin:auto;padding:26px 22px 60px}.top,.row,.section-head,.quest,.achievement,.boss-head{display:flex;align-items:center;justify-content:space-between;gap:14px}.brand{display:flex;align-items:center;gap:12px}.crest{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#8be0b5,#397d68);color:#092018;font-size:21px;font-weight:900}.eyebrow,.muted,.note{color:var(--muted)}.eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:10px;font-weight:800}.brand h1{font-size:20px;margin:1px 0}.pill{border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted);font-size:11px}.pill.demo{color:var(--gold);border-color:#705c35;background:#352b1b}.hero{margin:28px 0 18px;padding:24px;border:1px solid #355064;border-radius:20px;background:linear-gradient(120deg,#183044,#152431 65%,#1d332e);display:grid;grid-template-columns:1.4fr .8fr;gap:20px}.hero h2{font-size:clamp(26px,5vw,38px);line-height:1.12;margin:8px 0}.hero p{color:#b6c9d4;max-width:590px;margin:8px 0}.level-card{border:1px solid #496273;background:#0e1a24a8;border-radius:16px;padding:17px}.level-line{display:flex;align-items:baseline;justify-content:space-between}.level{font-size:30px;font-weight:850;color:var(--green)}.xp{font-size:13px;color:var(--muted)}.bar{height:9px;border-radius:99px;background:#293a46;overflow:hidden;margin:12px 0 7px}.bar span{display:block;height:100%;background:linear-gradient(90deg,#4ba77e,#9be5bd);border-radius:99px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:linear-gradient(160deg,#152331,#111c27);border:1px solid var(--line);border-radius:16px;padding:17px;min-width:0}.metric{font-size:25px;font-weight:800;margin-top:4px}.metric.green{color:var(--green)}.metric.gold{color:var(--gold)}.section{margin-top:24px}.section-head{margin-bottom:12px}.section-head h3{margin:0;font-size:17px}.two{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.quest-list,.ach-list{display:grid;gap:10px}.quest,.achievement{padding:13px;border:1px solid var(--line);background:#111d28;border-radius:13px}.quest-icon,.ach-icon{width:39px;height:39px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:#203444;flex:none}.quest-main,.ach-main{flex:1;min-width:0}.quest-main strong,.ach-main strong{display:block}.quest-main small,.ach-main small{color:var(--muted)}.reward{font-weight:800;color:var(--green);white-space:nowrap}.button{border:1px solid #4b8069;background:#1b4438;color:#c9f4dc;border-radius:10px;padding:8px 12px;font-weight:750;cursor:pointer}.button:disabled{opacity:.45;cursor:default}.boss{background:linear-gradient(140deg,#2a2420,#171e27);border-color:#574832}.boss-bar span{background:linear-gradient(90deg,#c18a42,#f1cf78)}.boss-art{font-size:36px}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.tag{font-size:11px;color:#c5d5df;background:#1d3040;border-radius:8px;padding:5px 8px}.foot{margin-top:24px;color:var(--muted);font-size:12px;text-align:center}.notice{padding:11px 14px;border:1px solid #665532;background:#2a251b;border-radius:12px;color:#ead8a8;font-size:12px;margin-top:16px}
-@media(max-width:760px){main{padding:18px 14px 40px}.hero{grid-template-columns:1fr;padding:19px}.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.top{align-items:flex-start}.top>.pill{max-width:120px;text-align:center}}
-@media(max-width:390px){.grid{gap:8px}.card{padding:13px}.metric{font-size:21px}.quest{gap:8px}.quest-icon{width:34px;height:34px}.button{padding:7px 9px}}
-</style>
-</head>
+:root{color-scheme:dark;--bg:#0b131d;--panel:#121e2a;--panel2:#172635;--line:#2a3c4d;--text:#edf4f7;--muted:#9aafbd;--green:#7bd6a8;--gold:#f1c66e;--blue:#8dbcf0;--red:#e58b80;--purple:#b9a1ed}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 12% -10%,#24475a 0,transparent 38%),radial-gradient(ellipse at 100% 10%,#1e3a35 0,transparent 28%),var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}button{font:inherit}a{color:inherit}main{max-width:1180px;margin:auto;padding:24px 22px 60px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px}.brand{display:flex;align-items:center;gap:12px}.crest{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#9be5bc,#347b67);color:#092018;font-size:21px;font-weight:900;box-shadow:0 8px 28px #62bd8c30}.brand h1{font-size:19px;margin:0}.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.14em;font-size:10px;font-weight:850}.muted,.note{color:var(--muted)}.pill{border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted);font-size:11px;white-space:nowrap}.pill.demo{color:var(--gold);border-color:#705c35;background:#352b1b}.nav{display:flex;gap:7px;overflow:auto;margin:23px 0 17px;padding-bottom:3px}.nav button{border:1px solid var(--line);background:#111d28;color:var(--muted);border-radius:10px;padding:9px 13px;white-space:nowrap;cursor:pointer}.nav button.active{background:#1c3b34;border-color:#477d65;color:#d4f5e2}.view{display:none}.view.active{display:block}.hero{padding:23px;border:1px solid #355064;border-radius:20px;background:linear-gradient(120deg,#183044,#152431 65%,#1d332e);display:grid;grid-template-columns:1.35fr .85fr;gap:20px}.hero h2{font-size:clamp(27px,5vw,39px);line-height:1.12;margin:8px 0}.hero p{color:#b6c9d4;max-width:620px;margin:8px 0}.level-card{border:1px solid #496273;background:#0e1a24b8;border-radius:16px;padding:17px}.row,.section-head,.quest,.achievement,.boss-head,.statline{display:flex;align-items:center;justify-content:space-between;gap:13px}.level-line{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:8px}.level{font-size:29px;font-weight:900;color:var(--green)}.xp{font-size:12px;color:var(--muted)}.bar{height:9px;border-radius:99px;background:#293a46;overflow:hidden;margin:12px 0 7px}.bar span{display:block;height:100%;background:linear-gradient(90deg,#4ba77e,#9be5bd);border-radius:99px;transition:width .25s}.bar.gold span{background:linear-gradient(90deg,#b47a36,#f2d181)}.tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}.tag{font-size:11px;color:#c5d5df;background:#1d3040;border-radius:8px;padding:5px 8px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:13px}.card{background:linear-gradient(160deg,#152331,#111c27);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}.metric{font-size:25px;font-weight:850;margin-top:4px}.green{color:var(--green)}.gold{color:var(--gold)}.section{margin-top:23px}.section-head{margin-bottom:11px}.section-head h3{margin:0;font-size:17px}.two{display:grid;grid-template-columns:1.1fr .9fr;gap:13px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.quest-list,.ach-list,.reward-list{display:grid;gap:9px}.quest,.achievement{padding:12px;border:1px solid var(--line);background:#111d28;border-radius:13px}.quest-icon,.ach-icon,.reward-icon{width:39px;height:39px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:#203444;flex:none}.quest-main,.ach-main{flex:1;min-width:0}.quest-main strong,.ach-main strong{display:block}.quest-main small,.ach-main small{color:var(--muted);display:block}.reward{font-weight:850;color:var(--green);white-space:nowrap}.btn{border:1px solid #4b8069;background:#1b4438;color:#c9f4dc;border-radius:10px;padding:8px 12px;font-weight:750;cursor:pointer}.btn.secondary{border-color:var(--line);background:#192735;color:#d5e1e8}.btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}.btn:disabled{opacity:.45;cursor:default}.filters{display:flex;gap:7px;flex-wrap:wrap}.filters button{border:1px solid var(--line);background:#152331;color:var(--muted);border-radius:999px;padding:6px 11px;cursor:pointer;font-size:12px}.filters button.active{border-color:#477d65;background:#1c3b34;color:#d4f5e2}.quest-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px}.tiny{font-size:10px;color:var(--muted)}.boss{background:linear-gradient(140deg,#2a2420,#171e27);border-color:#574832}.boss-art{font-size:39px}.note{font-size:11px}.achievement.locked{opacity:.58}.achievement.unlocked{border-color:#456b58}.badge-icon{font-size:21px}.progress-row{margin:10px 0}.progress-row .statline{font-size:12px;color:var(--muted)}.chapter{border-left:2px solid #4b826a;padding:2px 0 2px 15px;margin:14px 0}.chapter h4{margin:0 0 4px}.profile{display:flex;align-items:center;gap:16px}.avatar{width:78px;height:78px;border-radius:22px;background:linear-gradient(145deg,#345d6c,#24453e);display:grid;place-items:center;font-size:37px;border:1px solid #52776d}.reward-card{display:flex;gap:12px;align-items:center}.reward-icon{width:48px;height:48px;font-size:25px}.reward-card small{display:block;color:var(--muted)}.empty{padding:20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}.notice{padding:11px 14px;border:1px solid #665532;background:#2a251b;border-radius:12px;color:#ead8a8;font-size:12px;margin-top:16px}.toast{position:fixed;right:18px;bottom:18px;background:#173b30;border:1px solid #478468;color:#d8f5e5;padding:12px 16px;border-radius:12px;box-shadow:0 10px 40px #0008;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:translateY(0)}.foot{text-align:center;color:var(--muted);font-size:11px;margin-top:25px}.settings-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.settings-line:last-child{border:0}
+@media(max-width:780px){main{padding:17px 14px 42px}.hero{grid-template-columns:1fr;padding:18px}.grid{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}.top{align-items:flex-start}.top>.pill{max-width:130px;text-align:center}.quest{gap:8px;flex-wrap:wrap}.quest-main{min-width:55%}.quest .btn{margin-left:auto}}
+@media(max-width:390px){.grid{gap:8px}.card{padding:13px}.metric{font-size:21px}.quest-icon{width:34px;height:34px}.level{font-size:25px}}
+</style></head>
 <body><main>
-<header class="top"><div class="brand"><div class="crest">✦</div><div><div class="eyebrow">Pierce Miller Accounts</div><h1>Questboard</h1></div></div><span class="pill demo">⚑ TEST PREVIEW · FICTIONAL DATA</span></header>
-<section class="hero"><div><div class="eyebrow">Your financial adventure</div><h2>Build your future.<br><span style="color:var(--green)">One quest at a time.</span></h2><p>Turn healthy money habits into meaningful progress. Earn XP, unlock titles and take on financial boss battles — without turning spending into a competition.</p><div class="tags"><span class="tag">⚔ RPG progression</span><span class="tag">◈ Balanced challenges</span><span class="tag">✧ Real + virtual rewards</span></div></div>
-<div class="level-card"><div class="row"><span class="eyebrow">Adventurer profile</span><span class="pill">Season 01</span></div><div class="level-line"><div><div class="level">Level 04</div><strong>Steady Strategist</strong></div><div style="text-align:right"><div class="level">1,250</div><div class="xp">TOTAL XP</div></div></div><div class="bar"><span id="xpbar" style="width:83.3%"></span></div><div class="row xp"><span id="xptext">250 XP to Level 05</span><span id="xpcount">1,250 / 1,500</span></div></div></section>
-<section class="grid">
+<header class="top"><div class="brand"><div class="crest">✦</div><div><div class="eyebrow">Pierce Miller Accounts</div><h1>Questboard</h1></div></div><span class="pill demo">⚑ TEST · FICTIONAL DATA</span></header>
+<nav class="nav" aria-label="Questboard sections">
+<button class="active" data-view="overview">✦ Overview</button><button data-view="quests">⚔ Quests</button><button data-view="codex">🏅 Achievements</button><button data-view="bosses">🐉 Bosses</button><button data-view="character">🛡 Character</button><button data-view="settings">⚙ Settings</button>
+</nav>
+<section class="view active" id="overview">
+<div class="hero"><div><div class="eyebrow">Your financial adventure</div><h2>Build your future.<br><span class="green">One quest at a time.</span></h2><p>Turn healthy money habits into meaningful progress. Earn XP, unlock titles and take on financial boss battles — without turning spending into a competition.</p><div class="tags"><span class="tag">⚔ RPG progression</span><span class="tag">◈ Balanced challenges</span><span class="tag">✧ Real + virtual rewards</span></div></div>
+<div class="level-card"><div class="row"><span class="eyebrow">Adventurer profile</span><span class="pill">Season 01</span></div><div class="level-line"><div><div class="level" id="levelHero">Level 04</div><strong id="titleHero">Steady Strategist</strong></div><div style="text-align:right"><div class="level" id="xpHero">1,250</div><div class="xp">TOTAL XP</div></div></div><div class="bar"><span id="xpbar" style="width:50%"></span></div><div class="row xp"><span id="xptext">250 XP to Level 05</span><span id="xpcount">1,250 / 1,500</span></div></div></div>
+<div class="grid">
 <div class="card"><div class="eyebrow">Savings milestone</div><div class="metric green">$750</div><div class="muted">Demo progress · 75% complete</div></div>
 <div class="card"><div class="eyebrow">Debt progress</div><div class="metric">$320</div><div class="muted">Demo reduction this season</div></div>
-<div class="card"><div class="eyebrow">Quests completed</div><div class="metric">12</div><div class="muted">Across 3 chapters</div></div>
-<div class="card"><div class="eyebrow">Unlocked rewards</div><div class="metric gold">5</div><div class="muted">Titles, badges and relics</div></div>
+<div class="card"><div class="eyebrow">Quests completed</div><div class="metric" id="completedMetric">12</div><div class="muted">Across 3 chapters</div></div>
+<div class="card"><div class="eyebrow">Unlocked rewards</div><div class="metric gold" id="unlockedMetric">5</div><div class="muted">Titles, badges and relics</div></div></div>
+<div class="section two"><div class="card"><div class="section-head"><h3>Today's quests</h3><button class="btn ghost" data-go="quests">View all →</button></div><div class="quest-list" id="dailyPreview"></div></div>
+<div class="card"><div class="section-head"><h3>Recent achievements</h3><button class="btn ghost" data-go="codex">Open codex →</button></div><div class="ach-list" id="achievementPreview"></div></div></div>
+<div class="section"><div class="section-head"><h3>Current boss encounter</h3><span class="pill">Chapter 02</span></div><div id="bossPreview"></div></div>
 </section>
-<section class="section"><div class="section-head"><h3>Today's quests</h3><span class="pill">Balanced difficulty · Daily reset</span></div><div class="two"><div class="card quest-list" id="quests">
-<div class="quest" data-xp="25"><div class="quest-icon">🧭</div><div class="quest-main"><strong>Review your spending map</strong><small>Take two minutes to review recent activity</small></div><span class="reward">+25 XP</span><button class="button claim">Claim</button></div>
-<div class="quest" data-xp="50"><div class="quest-icon">🛡️</div><div class="quest-main"><strong>Protect your budget</strong><small>Check this week's plan against essentials</small></div><span class="reward">+50 XP</span><button class="button claim">Claim</button></div>
-<div class="quest" data-xp="75"><div class="quest-icon">🌱</div><div class="quest-main"><strong>Grow the reserve</strong><small>Make a planned savings contribution, if affordable</small></div><span class="reward">+75 XP</span><button class="button claim">Claim</button></div>
-<div class="quest" data-xp="50"><div class="quest-icon">🔎</div><div class="quest-main"><strong>Subscription scout</strong><small>Review one recurring payment</small></div><span class="reward">+50 XP</span><button class="button claim">Claim</button></div>
-<p class="note" style="font-size:11px;margin:3px 0">Demo controls only. Claiming a quest changes this preview's temporary XP counter, not any account.</p></div>
-<div class="card"><div class="section-head"><h3>Achievements</h3><span class="pill">Collection</span></div><div class="ach-list">
-<div class="achievement"><div class="ach-icon">🏅</div><div class="ach-main"><strong>Budget Guardian</strong><small>Kept a weekly plan on track</small></div><span class="pill">Earned</span></div>
-<div class="achievement"><div class="ach-icon">🪙</div><div class="ach-main"><strong>First Golden Coin</strong><small>Reached your first savings marker</small></div><span class="pill">Earned</span></div>
-<div class="achievement"><div class="ach-icon">🧱</div><div class="ach-main"><strong>Debt Breaker</strong><small>Make measurable debt progress</small></div><span class="pill">Locked</span></div>
-<div class="achievement"><div class="ach-icon">🔥</div><div class="ach-main"><strong>Steady Flame</strong><small>Complete four weekly check-ins</small></div><span class="pill">Locked</span></div></div></div></div></section>
-<section class="section"><div class="section-head"><h3>Boss encounter</h3><span class="pill">Chapter 02 · The Deepening</span></div><div class="card boss"><div class="boss-head"><div><div class="eyebrow" style="color:var(--gold)">Current challenge</div><h3 style="font-size:21px;margin:4px 0">The Overdraft Warden</h3><div class="muted">Build a realistic repayment plan and make steady, affordable progress.</div></div><div class="boss-art">🐉</div></div><div class="row" style="margin-top:20px"><strong>Encounter progress</strong><strong style="color:var(--gold)">32% · Demo</strong></div><div class="bar boss-bar"><span style="width:32%"></span></div><div class="note" style="font-size:12px">Boss health is based on debt reduction against a confirmed starting balance. No bonus for taking on new credit or missing essential payments.</div></div></section>
-<div class="notice">Preview uses entirely fictional figures. It has no Supabase connection, does not read bank data, and does not write to any database. XP resets when this page is reloaded.</div>
-<div class="foot">Questboard prototype · Not connected to production · NZD examples</div>
-</main>
+<section class="view" id="quests">
+<div class="section-head"><div><div class="eyebrow">Your active objectives</div><h2 style="margin:3px 0 0">Quest journal</h2></div><span class="pill">Balanced difficulty</span></div>
+<p class="muted">Small, practical actions build momentum. You can complete reflective quests without spending money or making a financial transaction.</p>
+<div class="filters" id="questFilters"><button class="active" data-filter="all">All quests</button><button data-filter="daily">Daily</button><button data-filter="weekly">Weekly</button><button data-filter="milestone">Milestones</button></div>
+<div class="section quest-list" id="allQuests"></div>
+</section>
+<section class="view" id="codex">
+<div class="section-head"><div><div class="eyebrow">Your collection</div><h2 style="margin:3px 0 0">Achievement codex</h2></div><span class="pill" id="codexCount">5 / 12 unlocked</span></div>
+<p class="muted">Badges celebrate consistency, awareness and progress — not how much money you have.</p>
+<div class="three" id="achievementGrid"></div>
+<div class="section"><div class="section-head"><h3>Titles collected</h3><span class="pill">Character cosmetics</span></div><div class="card reward-list" id="titlesList"></div></div>
+</section>
+<section class="view" id="bosses">
+<div class="section-head"><div><div class="eyebrow">Long-term challenges</div><h2 style="margin:3px 0 0">Boss encounters</h2></div><span class="pill">Chapter progression</span></div>
+<p class="muted">Bosses represent financial challenges. Progress is based on safe, confirmed milestones. No reward is worth missing essentials or taking on new debt.</p>
+<div class="quest-list" id="bossList"></div>
+</section>
+<section class="view" id="character">
+<div class="section-head"><div><div class="eyebrow">Your adventurer</div><h2 style="margin:3px 0 0">Character & inventory</h2></div><span class="pill">Season 01</span></div>
+<div class="card profile"><div class="avatar">🧙</div><div><div class="eyebrow">Current class</div><h2 style="margin:2px 0">Steady Strategist</h2><div class="muted">A planner who wins through consistency.</div><div class="tags"><span class="tag" id="equippedTitle">Title: Budget Guardian</span><span class="tag">Level <span id="characterLevel">04</span></span></div></div></div>
+<div class="section grid"><div class="card"><div class="eyebrow">Lifetime XP</div><div class="metric green" id="characterXP">1,250</div></div><div class="card"><div class="eyebrow">Quests claimed</div><div class="metric" id="characterQuests">12</div></div><div class="card"><div class="eyebrow">Achievements</div><div class="metric gold" id="characterBadges">5</div></div><div class="card"><div class="eyebrow">Current streak</div><div class="metric">3 days</div><div class="muted">Demo streak · no penalty for breaks</div></div></div>
+<div class="section"><div class="section-head"><h3>Inventory</h3><span class="pill">Cosmetic rewards</span></div><div class="three" id="inventoryGrid"></div></div>
+<div class="notice">In the connected version, your character and cosmetic rewards will persist separately from financial records. No achievement will contain merchant names, account identifiers or transaction descriptions.</div>
+</section>
+<section class="view" id="settings">
+<div class="section-head"><div><div class="eyebrow">Prototype controls</div><h2 style="margin:3px 0 0">Settings & safety</h2></div><span class="pill demo">Demo mode</span></div>
+<div class="card">
+<div class="settings-line"><div><strong>Progress persistence</strong><div class="muted">Keep demo XP and claimed quests in this browser only.</div></div><span class="pill">Local only</span></div>
+<div class="settings-line"><div><strong>Financial data connection</strong><div class="muted">Not connected. This prototype uses fictional sample values.</div></div><span class="pill demo">Disconnected</span></div>
+<div class="settings-line"><div><strong>Notifications</strong><div class="muted">No notifications or reminders are sent.</div></div><span class="pill">Off</span></div>
+<div class="settings-line"><div><strong>Reset demo progress</strong><div class="muted">Restore the sample character and quest claims.</div></div><button class="btn secondary" id="resetDemo">Reset demo</button></div></div>
+<div class="notice">Safety boundary: this page contains no Supabase client, API keys, bank connections or finance-table operations. It does not read or write production financial data. All displayed money figures are illustrative only.</div>
+</section>
+<div class="foot">Questboard prototype · Fictional demo data · Not connected to production Accounts</div>
+</main><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-let xp=1250;
-document.querySelectorAll('.claim').forEach(button=>button.addEventListener('click',()=>{
- const quest=button.closest('.quest'); if(button.disabled)return;
- const earned=Number(quest.dataset.xp);xp+=earned;button.textContent='Completed';button.disabled=true;
- const level=Math.floor(xp/500)+2;const levelStart=(level-2)*500+500;const next=levelStart+500;const progress=Math.min(100,((xp-(levelStart-500))/500)*100);
- document.querySelector('.level').textContent='Level '+String(level).padStart(2,'0');
- document.querySelector('.level-card strong').textContent=level>=6?'Quest Champion':'Steady Strategist';
- document.querySelectorAll('.level')[1].textContent=xp.toLocaleString('en-NZ');
- document.getElementById('xpbar').style.width=progress+'%';
- document.getElementById('xptext').textContent=(next-xp)+' XP to Level '+String(level+1).padStart(2,'0');
- document.getElementById('xpcount').textContent=xp.toLocaleString('en-NZ')+' / '+next.toLocaleString('en-NZ');
-}));
+(function(){
+'use strict';
+var STORAGE='accounts.questboard.demo.v2';
+var initial={xp:1250,completed:12,claimed:[],unlocked:['budget','coin','review','planner','steady'],equipped:'Budget Guardian'};
+var state=load();
+var quests=[
+{id:'review',icon:'🧭',name:'Map your spending',desc:'Spend two minutes reviewing recent activity and noting one thing you learned.',type:'daily',xp:25,difficulty:'Easy',kind:'reflection'},
+{id:'essentials',icon:'🛡️',name:'Protect the essentials',desc:'Check that upcoming essentials and bills are accounted for before discretionary spending.',type:'daily',xp:50,difficulty:'Steady',kind:'planning'},
+{id:'reserve',icon:'🌱',name:'Nurture your reserve',desc:'Review your savings plan. A contribution is optional and only if comfortably affordable.',type:'weekly',xp:75,difficulty:'Steady',kind:'savings'},
+{id:'subscription',icon:'🔎',name:'Subscription scout',desc:'Review one recurring payment and decide whether it still provides value.',type:'weekly',xp:50,difficulty:'Easy',kind:'review'},
+{id:'plan',icon:'📜',name:'Write your next move',desc:'Choose one realistic money goal for the coming week.',type:'daily',xp:25,difficulty:'Easy',kind:'reflection'},
+{id:'debt',icon:'⚒️',name:'Study the dragon',desc:'Review debt balances and confirm the next affordable repayment step.',type:'weekly',xp:75,difficulty:'Steady',kind:'debt'},
+{id:'buffer',icon:'🏕️',name:'Strengthen the camp',desc:'Review your emergency buffer target and whether it fits your current needs.',type:'milestone',xp:100,difficulty:'Steady',kind:'savings'},
+{id:'month',icon:'🌙',name:'Close the chapter',desc:'Complete a monthly money review and recognise one improvement, however small.',type:'milestone',xp:150,difficulty:'Focused',kind:'reflection'}
+];
+var achievements=[
+{id:'budget',icon:'🏅',name:'Budget Guardian',desc:'Kept a weekly plan on track.',rarity:'Common'},
+{id:'coin',icon:'🪙',name:'First Golden Coin',desc:'Reached your first savings marker.',rarity:'Common'},
+{id:'review',icon:'📖',name:'The Observer',desc:'Completed your first money review.',rarity:'Common'},
+{id:'planner',icon:'🧭',name:'Pathfinder',desc:'Set a clear next step.',rarity:'Common'},
+{id:'steady',icon:'🔥',name:'Steady Flame',desc:'Showed up for three check-ins.',rarity:'Rare'},
+{id:'debt',icon:'⚒️',name:'Debt Breaker',desc:'Made confirmed progress on a debt goal.',rarity:'Rare'},
+{id:'reserve',icon:'🌳',name:'Deep Roots',desc:'Built a savings buffer milestone.',rarity:'Rare'},
+{id:'scout',icon:'🔍',name:'Subscription Scout',desc:'Reviewed recurring commitments.',rarity:'Common'},
+{id:'chapter',icon:'📚',name:'Chapter Keeper',desc:'Completed a monthly review.',rarity:'Epic'},
+{id:'level5',icon:'✨',name:'Rising Hero',desc:'Reached level five.',rarity:'Rare'},
+{id:'level10',icon:'👑',name:'Guild Legend',desc:'Reached level ten.',rarity:'Legendary'},
+{id:'balance',icon:'⚖️',name:'The Long View',desc:'Balanced progress across multiple goals.',rarity:'Epic'}
+];
+var bosses=[
+{id:'warden',icon:'🐉',name:'The Overdraft Warden',chapter:'Chapter 02 · The Deepening',desc:'Build a realistic repayment plan and make steady, affordable progress.',progress:32,xp:250,steps:['Understand the current balance','Set an affordable repayment plan','Complete a confirmed repayment milestone']},
+{id:'hydra',icon:'🐲',name:'The Subscription Hydra',chapter:'Chapter 03 · Many Heads',desc:'Review recurring costs and keep the services that genuinely matter.',progress:55,xp:175,steps:['List active recurring commitments','Review one renewal','Resolve one unwanted subscription']},
+{id:'guardian',icon:'🗿',name:'The Reserve Guardian',chapter:'Chapter 04 · Safe Harbour',desc:'Build a financial buffer at a pace that protects your essentials.',progress:18,xp:300,steps:['Choose a realistic buffer target','Make a comfortable contribution','Reach the first buffer milestone']}
+];
+function load(){try{var x=JSON.parse(localStorage.getItem(STORAGE)||'null');return x&&typeof x.xp==='number'?x:Object.assign({},initial)}catch(e){return Object.assign({},initial)}}
+function save(){try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch(e){}}
+function level(){return Math.floor(state.xp/500)+2}
+function levelFloor(){return (level()-2)*500}
+function nextLevel(){return levelFloor()+500}
+function title(){return level()>=10?'Guild Legend':level()>=5?'Quest Champion':'Steady Strategist'}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function renderXP(){
+var pct=Math.max(0,Math.min(100,(state.xp-levelFloor())/500*100));
+document.getElementById('levelHero').textContent='Level '+String(level()).padStart(2,'0');
+document.getElementById('titleHero').textContent=title();
+document.getElementById('xpHero').textContent=state.xp.toLocaleString('en-NZ');
+document.getElementById('xpbar').style.width=pct+'%';
+document.getElementById('xptext').textContent=(nextLevel()-state.xp)+' XP to Level '+String(level()+1).padStart(2,'0');
+document.getElementById('xpcount').textContent=state.xp.toLocaleString('en-NZ')+' / '+nextLevel().toLocaleString('en-NZ');
+document.getElementById('completedMetric').textContent=state.completed;
+document.getElementById('unlockedMetric').textContent=state.unlocked.length;
+document.getElementById('characterLevel').textContent=String(level()).padStart(2,'0');
+document.getElementById('characterXP').textContent=state.xp.toLocaleString('en-NZ');
+document.getElementById('characterQuests').textContent=state.completed;
+document.getElementById('characterBadges').textContent=state.unlocked.length;
+document.getElementById('equippedTitle').textContent='Title: '+state.equipped;
+}
+function questCard(q){var claimed=state.claimed.indexOf(q.id)>=0;return '<div class="quest"><div class="quest-icon">'+q.icon+'</div><div class="quest-main"><strong>'+esc(q.name)+'</strong><small>'+esc(q.desc)+'</small><div class="quest-meta"><span class="pill">'+q.type+'</span><span class="tiny">'+q.difficulty+' · '+q.kind+'</span></div></div><span class="reward">+'+q.xp+' XP</span><button class="btn claim" data-claim="'+q.id+'" '+(claimed?'disabled':'')+'>'+(claimed?'Claimed':'Complete')+'</button></div>'}
+function achievementCard(a){var unlocked=state.unlocked.indexOf(a.id)>=0;return '<div class="card achievement '+(unlocked?'unlocked':'locked')+'"><div class="row"><div class="ach-icon">'+a.icon+'</div><span class="pill">'+(unlocked?'Unlocked':a.rarity)+'</span></div><h3 style="margin:12px 0 3px;font-size:15px">'+esc(a.name)+'</h3><div class="muted" style="font-size:12px">'+esc(a.desc)+'</div></div>'}
+function bossCard(b){return '<div class="card boss"><div class="boss-head"><div><div class="eyebrow" style="color:var(--gold)">'+esc(b.chapter)+'</div><h3 style="font-size:20px;margin:4px 0">'+b.icon+' '+esc(b.name)+'</h3><div class="muted">'+esc(b.desc)+'</div></div><div class="boss-art">'+b.icon+'</div></div><div class="statline" style="margin-top:16px"><strong>Encounter progress</strong><strong class="gold">'+b.progress+'% · Demo</strong></div><div class="bar gold"><span style="width:'+b.progress+'%"></span></div><div class="muted" style="font-size:12px">'+b.steps.map(function(s,i){return '<div style="padding:4px 0">◇ '+esc(s)+'</div>'}).join('')+'</div><div class="note" style="margin-top:8px">Reward on completion: '+b.xp+' XP · Fictional boss progress</div></div>'}
+function render(){
+renderXP();
+document.getElementById('dailyPreview').innerHTML=quests.filter(function(q){return q.type==='daily'}).slice(0,3).map(questCard).join('');
+document.getElementById('allQuests').innerHTML=quests.filter(function(q){var f=document.querySelector('#questFilters button.active').dataset.filter;return f==='all'||q.type===f}).map(questCard).join('');
+document.getElementById('achievementPreview').innerHTML=achievements.filter(function(a){return state.unlocked.indexOf(a.id)>=0}).slice(0,3).map(achievementCard).join('');
+document.getElementById('achievementGrid').innerHTML=achievements.map(achievementCard).join('');
+document.getElementById('codexCount').textContent=state.unlocked.length+' / '+achievements.length+' unlocked';
+document.getElementById('bossPreview').innerHTML=bossCard(bosses[0]);
+document.getElementById('bossList').innerHTML=bosses.map(bossCard).join('');
+document.getElementById('titlesList').innerHTML=['Budget Guardian','Pathfinder','Steady Strategist','Quest Champion','Guild Legend'].map(function(t){var active=state.equipped===t;var allowed=t==='Budget Guardian'||(t==='Pathfinder'&&state.unlocked.indexOf('planner')>=0)||(t==='Steady Strategist')||(t==='Quest Champion'&&level()>=5)||(t==='Guild Legend'&&level()>=10);return '<div class="reward-card"><div class="reward-icon">🎖️</div><div style="flex:1"><strong>'+t+'</strong><small>'+(allowed?'Available title':'Unlock through progression')+'</small></div><button class="btn secondary equip" data-title="'+t+'" '+(!allowed||active?'disabled':'')+'>'+(active?'Equipped':'Equip')+'</button></div>'}).join('');
+document.getElementById('inventoryGrid').innerHTML='<div class="card reward-card"><div class="reward-icon">🛡️</div><div><strong>Wayfarer Shield</strong><small>Starter cosmetic · Owned</small></div></div><div class="card reward-card"><div class="reward-icon">🪙</div><div><strong>Golden Coin</strong><small>Achievement relic · Owned</small></div></div><div class="card reward-card"><div class="reward-icon">🔥</div><div><strong>Steady Flame</strong><small>'+(state.unlocked.indexOf('steady')>=0?'Unlocked':'Locked')+'</small></div></div>';
+}
+function unlock(id){if(state.unlocked.indexOf(id)<0){state.unlocked.push(id);var a=achievements.find(function(x){return x.id===id});if(a)toast('Achievement unlocked: '+a.name)}}
+function toast(s){var el=document.getElementById('toast');el.textContent=s;el.classList.add('show');window.clearTimeout(toast.timer);toast.timer=window.setTimeout(function(){el.classList.remove('show')},2400)}
+document.addEventListener('click',function(e){
+var nav=e.target.closest('[data-view]');if(nav){document.querySelectorAll('.nav button').forEach(function(b){b.classList.toggle('active',b===nav)});document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('active',v.id===nav.dataset.view)});return}
+var go=e.target.closest('[data-go]');if(go){document.querySelector('[data-view="'+go.dataset.go+'"]').click();return}
+var filter=e.target.closest('[data-filter]');if(filter){document.querySelectorAll('#questFilters button').forEach(function(b){b.classList.toggle('active',b===filter)});render();return}
+var claim=e.target.closest('[data-claim]');if(claim&&!claim.disabled){var q=quests.find(function(x){return x.id===claim.dataset.claim});if(!q)return;state.claimed.push(q.id);state.xp+=q.xp;state.completed++;if(q.id==='review')unlock('review');if(q.id==='plan')unlock('planner');if(q.id==='subscription')unlock('scout');if(q.id==='debt')unlock('debt');if(q.id==='reserve')unlock('reserve');if(state.completed>=15)unlock('steady');if(level()>=5)unlock('level5');if(level()>=10)unlock('level10');save();render();toast('Quest complete · +'+q.xp+' XP');return}
+var equip=e.target.closest('[data-title]');if(equip&&!equip.disabled){state.equipped=equip.dataset.title;save();render();toast('Title equipped: '+state.equipped)}
+});
+document.getElementById('resetDemo').addEventListener('click',function(){if(!window.confirm('Reset this browser’s fictional Questboard demo progress?'))return;state={xp:initial.xp,completed:initial.completed,claimed:[],unlocked:initial.unlocked.slice(),equipped:initial.equipped};save();render();toast('Demo progress reset')});
+render();
+})();
 </script></body></html>
